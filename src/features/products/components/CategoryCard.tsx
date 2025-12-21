@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
+import {OptimizedImage} from '@shared/components/OptimizedImage';
 
 interface CategoryCardProps {
   id: string;
@@ -23,10 +24,11 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         {image_url ? (
-          <Image
+          <OptimizedImage
             source={{uri: image_url}}
             style={styles.image}
-            resizeMode="cover"
+            contentFit="cover"
+            showLoader={false}
           />
         ) : (
           <View style={styles.placeholderImage}>

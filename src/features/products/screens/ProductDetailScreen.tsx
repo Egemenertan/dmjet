@@ -9,7 +9,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Animated,
   Dimensions,
@@ -24,6 +23,7 @@ import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {productsService} from '../services/productsService';
 import {MainStackParamList} from '@core/navigation/types';
+import {OptimizedImage} from '@shared/components/OptimizedImage';
 
 type ProductDetailScreenRouteProp = RouteProp<MainStackParamList, 'ProductDetail'>;
 
@@ -146,10 +146,11 @@ export const ProductDetailScreen: React.FC = () => {
             ]}
           >
             {product.image_url ? (
-              <Image 
+              <OptimizedImage 
                 source={{uri: product.image_url}} 
                 style={styles.productImage}
-                resizeMode="cover"
+                contentFit="cover"
+                showLoader
               />
             ) : (
               <View style={styles.placeholderImage}>

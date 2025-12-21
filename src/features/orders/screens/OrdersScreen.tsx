@@ -243,8 +243,12 @@ export const OrdersScreen: React.FC = () => {
                 style={styles.orderCard}
                 activeOpacity={0.7}
                 onPress={() => {
-                  // TODO: Navigate to order detail
-                  console.log('Order detail:', order.id);
+                  // Show order detail with all information
+                  Alert.alert(
+                    t('orders.orderDetail'),
+                    `${t('orders.orderId')}: ${order.id}\n${t('orders.status')}: ${statusInfo.label}\n${t('orders.total')}: ₺${order.total_amount.toFixed(2)}`,
+                    [{text: t('common.ok'), style: 'default'}]
+                  );
                 }}
               >
                 {/* Status Badge - Arka plan rengi ile */}

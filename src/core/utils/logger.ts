@@ -1,7 +1,10 @@
 /**
  * Logger Utility
  * Provides safe logging that respects environment (dev/prod)
+ * Integrated with Sentry for error tracking
  */
+
+import { captureException, captureMessage, addBreadcrumb } from '@/core/services/sentry';
 
 const isDev = __DEV__;
 
@@ -20,18 +23,32 @@ export const logger = {
   },
 
   /**
-   * Log errors (always logged)
+   * Log errors (always logged and sent to Sentry)
    */
   error: (...args: any[]) => {
     console.error(...args);
-    // TODO: Send to error tracking service (Sentry)
+    
+    // Send to Sentry in production
+    if (!isDev) {
+      const error = args[0];
+      if (error instanceof Error) {
+        captureException(error, { additionalData: args.slice(1) });
+      } else {
+        captureMessage(String(error), 'error', { additionalData: args });
+      }
+    }
   },
 
   /**
-   * Log warnings (always logged)
+   * Log warnings (always logged and sent to Sentry)
    */
   warn: (...args: any[]) => {
     console.warn(...args);
+    
+    // Send to Sentry as warning in production
+    if (!isDev) {
+      captureMessage(String(args[0]), 'warning', { additionalData: args.slice(1) });
+    }
   },
 
   /**
@@ -62,11 +79,14 @@ export const logger = {
   },
 
   /**
-   * Log API calls (dev only)
+   * Log API calls (dev only, breadcrumb in production)
    */
   api: (method: string, endpoint: string, data?: any) => {
     if (isDev) {
       console.log(`🌐 API ${method} ${endpoint}`, data || '');
+    } else {
+      // Add as breadcrumb for debugging in Sentry
+      addBreadcrumb(`API ${method} ${endpoint}`, 'http', 'info', { data });
     }
   },
 

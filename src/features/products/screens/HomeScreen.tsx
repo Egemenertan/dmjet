@@ -54,8 +54,13 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleBannerPress = (banner: any) => {
-    // TODO: Banner'a tıklandığında ilgili sayfaya yönlendir
-    Alert.alert('Banner', 'Banner detay sayfası hazırlanıyor...');
+    // Banner click handling - can be extended with deep linking
+    // Currently shows informational alert
+    Alert.alert(
+      t('home.bannerTitle'),
+      t('home.bannerMessage'),
+      [{text: t('common.ok'), style: 'default'}]
+    );
   };
 
   // Demo banner verileri - gerçek uygulamada Supabase'den çekilecek
@@ -173,6 +178,12 @@ export const HomeScreen: React.FC = () => {
             numColumns={2}
             scrollEnabled={false}
             contentContainerStyle={styles.productsGrid}
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            windowSize={10}
+            initialNumToRender={6}
           />
         </View>
       </ScrollView>

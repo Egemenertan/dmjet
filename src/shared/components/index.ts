@@ -7,4 +7,5 @@ export {BannerCard} from './BannerCard';
 export {BannerCarousel} from './BannerCarousel';
 export {ModernBottomBar} from './ModernBottomBar';
 export {CountryCodePicker} from './CountryCodePicker';
+export {OptimizedImage} from './OptimizedImage';
 

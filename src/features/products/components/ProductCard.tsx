@@ -4,12 +4,13 @@
  */
 
 import React, {useState, useEffect} from 'react';
-import {View, Text, Image, StyleSheet, TouchableOpacity, Animated} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Animated} from 'react-native';
 import { Trash } from 'iconoir-react-native';
 import {colors, spacing, borderRadius, fontSize, fontWeight} from '@core/constants';
 import {Button} from '@shared/ui';
 import {useCartStore} from '@store/slices/cartStore';
 import {useTranslation} from '@localization';
+import {OptimizedImage} from '@shared/components/OptimizedImage';
 
 interface ProductCardProps {
   id: string;
@@ -73,7 +74,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         {image_url ? (
-          <Image source={{uri: image_url}} style={styles.image} />
+          <OptimizedImage 
+            source={{uri: image_url}} 
+            style={styles.image}
+            contentFit="cover"
+            showLoader
+          />
         ) : (
           <View style={styles.placeholderImage}>
             <Text style={styles.placeholderText}>No Image</Text>
@@ -166,7 +172,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   placeholderImage: {
     width: '100%',

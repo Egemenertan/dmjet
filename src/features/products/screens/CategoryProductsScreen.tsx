@@ -230,6 +230,12 @@ export const CategoryProductsScreen: React.FC = () => {
               </View>
             )}
             ListFooterComponent={renderFooter}
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            windowSize={10}
+            initialNumToRender={6}
           />
         ) : (
           <View style={styles.emptyContainer}>
