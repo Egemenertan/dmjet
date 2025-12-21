@@ -152,13 +152,14 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   dot: {
-    width: 0,
-    height: 0,
+    width: 8,
+    height: 8,
     borderRadius: 4,
     backgroundColor: colors.border,
   },
   activeDot: {
     width: 24,
+    height: 8,
     backgroundColor: colors.primary,
   },
 });

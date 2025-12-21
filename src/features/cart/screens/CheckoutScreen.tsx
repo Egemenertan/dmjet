@@ -36,6 +36,12 @@ import {useCartStore} from '@store/slices/cartStore';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
 import {supabase} from '@core/services/supabase';
+import {
+  getDeliverySettings,
+  calculateDeliveryFee,
+  meetsMinimumOrder,
+} from '../services/deliveryService';
+import {DeliverySettings} from '../types';
 
 interface UserLocation {
   latitude: number;
@@ -57,6 +63,8 @@ export const CheckoutScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderNote, setOrderNote] = useState('');
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -64,7 +72,21 @@ export const CheckoutScreen: React.FC = () => {
     } else {
       setLoadingLocation(false);
     }
+    // Fetch delivery settings on mount
+    fetchDeliverySettings();
   }, [isAuthenticated]);
+
+  const fetchDeliverySettings = async () => {
+    try {
+      setLoadingSettings(true);
+      const settings = await getDeliverySettings();
+      setDeliverySettings(settings);
+    } catch (error) {
+      console.error('Delivery settings yüklenemedi:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
 
   // Sayfa focus olduğunda konumu yeniden yükle
   useEffect(() => {
@@ -131,6 +153,17 @@ export const CheckoutScreen: React.FC = () => {
       Alert.alert(
         t('checkout.selectAddressError'),
         t('checkout.selectAddressMessage'),
+        [{text: t('common.ok')}]
+      );
+      return;
+    }
+
+    // Check minimum order requirement
+    if (!canPlaceOrder) {
+      const minAmount = deliverySettings?.min_order_amount || 0;
+      Alert.alert(
+        'Minimum Sipariş Tutarı',
+        `Sipariş verebilmek için minimum ₺${minAmount.toFixed(2)} tutarında alışveriş yapmalısınız.`,
         [{text: t('common.ok')}]
       );
       return;
@@ -204,8 +237,12 @@ export const CheckoutScreen: React.FC = () => {
     }
   };
 
-  const deliveryFee = 0; // Teslimat ücreti
+  // Calculate delivery fee based on settings
+  const deliveryFee = calculateDeliveryFee(totalAmount, deliverySettings);
   const finalTotal = totalAmount + deliveryFee;
+  
+  // Check if order meets minimum requirement (from Supabase)
+  const canPlaceOrder = meetsMinimumOrder(totalAmount, deliverySettings);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -517,10 +554,31 @@ export const CheckoutScreen: React.FC = () => {
             {/* Teslimat Ücreti */}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('checkout.deliveryFee')}</Text>
-              <Text style={[styles.summaryValue, styles.freeText]}>
+              <Text style={[styles.summaryValue, deliveryFee === 0 && styles.freeText]}>
                 {deliveryFee === 0 ? t('checkout.free') : `₺${deliveryFee.toFixed(2)}`}
               </Text>
             </View>
+
+            {/* Minimum Order Warning */}
+            {deliverySettings && !canPlaceOrder && (
+              <View style={styles.warningBox}>
+                <Text style={styles.warningText}>
+                  Minimum sipariş tutarı: ₺{deliverySettings.min_order_amount.toFixed(2)}
+                </Text>
+                <Text style={styles.warningSubText}>
+                  Kalan: ₺{(deliverySettings.min_order_amount - totalAmount).toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {/* Free Delivery Info */}
+            {deliverySettings && deliveryFee > 0 && canPlaceOrder && (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>
+                  ₺{deliverySettings.min_order_for_free_delivery.toFixed(2)} ve üzeri siparişlerde ücretsiz teslimat!
+                </Text>
+              </View>
+            )}
 
             {/* Divider */}
             <View style={styles.summaryDivider} />
@@ -553,7 +611,7 @@ export const CheckoutScreen: React.FC = () => {
             onPress={handlePlaceOrder}
             fullWidth
             rounded
-            disabled={isPlacingOrder || !userLocation}
+            disabled={isPlacingOrder || !userLocation || !canPlaceOrder}
           />
         )}
       </View>
@@ -976,6 +1034,38 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
     color: colors.primary,
+  },
+  warningBox: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#FFE69C',
+  },
+  warningText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: '#856404',
+    marginBottom: 4,
+  },
+  warningSubText: {
+    fontSize: fontSize.xs,
+    color: '#856404',
+  },
+  infoBox: {
+    backgroundColor: '#D1ECF1',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#BEE5EB',
+  },
+  infoText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: '#0C5460',
+    textAlign: 'center',
   },
 });
 

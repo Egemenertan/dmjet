@@ -566,7 +566,11 @@ export const AdminOrdersScreen: React.FC = () => {
             />
           }>
           {orders.map((order) => {
-            const statusInfo = statusConfig[order.status] || statusConfig.preparing;
+            const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.preparing || {
+              label: order.status,
+              color: colors.text.secondary,
+              bgColor: colors.background,
+            };
 
             // Picker için basitleştirilmiş görünüm
             if (isPicker) {

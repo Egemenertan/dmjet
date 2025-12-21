@@ -12,6 +12,7 @@ import {RootNavigator} from '@core/navigation';
 import {supabase} from '@core/services/supabase';
 import {useAuthStore} from '@store/slices/authStore';
 import {profileService} from '@features/profile/services/profileService';
+import {NotificationProvider} from '@core/contexts/NotificationContext';
 import {colors} from '@core/constants';
 import './src/localization/i18n';
 
@@ -123,11 +124,13 @@ function App(): React.JSX.Element {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={colors.background}
-        />
-        <RootNavigator />
+        <NotificationProvider>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor={colors.background}
+          />
+          <RootNavigator />
+        </NotificationProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

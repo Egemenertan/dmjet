@@ -11,6 +11,7 @@ export const colors = {
   
   // Background Colors
   background: '#FFFFFF',
+  white: '#FFFFFF',
   surface: '#F8F9FA',
   surfaceSecondary: '#F1F3F5',
   

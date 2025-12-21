@@ -231,7 +231,11 @@ export const OrdersScreen: React.FC = () => {
           }
         >
           {displayOrders.map((order) => {
-            const statusInfo = statusConfig[order.status];
+            const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || {
+              label: order.status,
+              color: colors.text.secondary,
+              bgColor: colors.background,
+            };
 
             return (
               <TouchableOpacity

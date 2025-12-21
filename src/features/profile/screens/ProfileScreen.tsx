@@ -70,33 +70,45 @@ export const ProfileScreen: React.FC = () => {
   }, [isEditModalVisible, profileData]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user?.id) {
       fetchUserLocation();
+    } else if (!isAuthenticated) {
+      // Kullanıcı giriş yapmamışsa loading'i kapat
+      setLoadingLocation(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.id]);
 
   // Sayfa focus olduğunda konumu yeniden yükle
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (isAuthenticated && user) {
+      if (isAuthenticated && user?.id) {
         fetchUserLocation();
       }
     });
 
     return unsubscribe;
-  }, [navigation, isAuthenticated, user]);
+  }, [navigation, isAuthenticated, user?.id]);
 
   const fetchUserLocation = async () => {
+    // User kontrolü - user yoksa veya id yoksa işlemi durdur
+    if (!user?.id) {
+      console.warn('⚠️ fetchUserLocation: User ID bulunamadı');
+      setLoadingLocation(false);
+      return;
+    }
+
     try {
       setLoadingLocation(true);
+      console.log('📍 Profil bilgileri yükleniyor...', user.id);
+      
       // Önce aile_karti ile dene, yoksa aile_karti olmadan dene
       let data, error;
       
       const result = await supabase
         .from('profiles')
-        .select('location_lat, location_lng, address, address_details, aile_karti, full_name, phone, country_code, avatar_url')
-        .eq('id', user?.id)
-        .single();
+        .select('location_lat, location_lng, address, address_details, aile_karti, full_name, phone, country_code, avatar_url, push_token, push_token_updated_at')
+        .eq('id', user.id)
+        .single() as { data: any; error: any };
       
       // Eğer aile_karti kolonu yoksa, onsuz dene
       if (result.error?.code === '42703') {
@@ -153,6 +165,18 @@ export const ProfileScreen: React.FC = () => {
           country_code: data.country_code || '+90',
           avatar_url: data.avatar_url || null,
         });
+        
+        // Push token durumunu logla
+        if ('push_token' in data) {
+          if (data.push_token && typeof data.push_token === 'string') {
+            console.log('✅ Push token mevcut:', data.push_token.substring(0, 30) + '...');
+            if ('push_token_updated_at' in data) {
+              console.log('   Son güncelleme:', data.push_token_updated_at);
+            }
+          } else {
+            console.log('⚠️ Push token YOK - bildirimler çalışmayacak!');
+          }
+        }
       }
     } catch (error) {
       console.error('Konum yüklenemedi:', error);
@@ -573,6 +597,10 @@ export const ProfileScreen: React.FC = () => {
                     pitchEnabled={false}
                     rotateEnabled={false}
                     pointerEvents="none"
+                    loadingEnabled={true}
+                    loadingIndicatorColor={colors.primary}
+                    loadingBackgroundColor={colors.background}
+                    onMapReady={() => console.log('📍 Map yüklendi')}
                   >
                     <Marker
                       coordinate={{
@@ -969,10 +997,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignItems: 'center',
-    backgroundColor: '',
+    backgroundColor: '#fff',
     borderRadius: 24,
     padding: spacing.xs,
- 
   },
   notLoggedInIcon: {
     width: 120,

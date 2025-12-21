@@ -103,7 +103,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    
+    marginBottom: spacing.md,
   },
   headerRow: {
     flexDirection: 'row',
@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
   viewAllButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-
   },
   viewAllText: {
     fontSize: fontSize.sm,
