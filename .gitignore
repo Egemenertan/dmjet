@@ -83,3 +83,11 @@ yarn-error.log
 .expo-shared/
 dist/
 web-build/
+
+# Documentation (internal use only)
+*_GUIDE.md
+*_CHECKLIST.md
+*_SUMMARY.md
+QUICK_START_*.md
+secrets-to-remove.txt
+*.sh

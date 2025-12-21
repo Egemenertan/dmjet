@@ -5,6 +5,7 @@
 
 import {supabase} from '@core/services/supabase';
 import {Database} from '@core/types/database.types';
+import {sanitizeSearchQuery} from '@core/utils/sanitize';
 import {getCategoryImageUrl, getProductImageUrl} from '@core/utils';
 
 type Product = Database['public']['Tables']['products']['Row'];
@@ -148,13 +149,16 @@ export const productsService = {
    * TR için direkt products.name, diğer diller için translations
    */
   async searchProducts(query: string, language: string = 'tr') {
+    // Sanitize search query
+    const sanitizedQuery = sanitizeSearchQuery(query);
+    
     // Türkçe için translation yok, direkt products tablosundan ara
     if (language === 'tr') {
       const {data, error} = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
-        .ilike('name', `%${query}%`);
+        .ilike('name', `%${sanitizedQuery}%`);
 
       if (error) throw error;
       
@@ -174,7 +178,7 @@ export const productsService = {
       `)
       .eq('product_translations.language_code', language)
       .eq('is_active', true)
-      .ilike('product_translations.name', `%${query}%`);
+      .ilike('product_translations.name', `%${sanitizedQuery}%`);
 
     if (error) throw error;
     

@@ -24,9 +24,7 @@
         "NSLocationWhenInUseUsageDescription": "Bu uygulama size yakın mağazaları göstermek ve teslimat konumunuzu belirlemek için konumunuza erişim gerektirir.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Bu uygulama teslimat konumunuzu belirlemek için konumunuza erişim gerektirir."
       },
-      "config": {
-        "googleMapsApiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
-      }
+      "config": {}
     },
     "android": {
       "adaptiveIcon": {
@@ -39,12 +37,13 @@
         "ACCESS_FINE_LOCATION",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
-        }
+        "googleMaps": {}
       }
     },
     "web": {
@@ -53,11 +52,8 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
-      },
-      "supabaseUrl": "https://jcnlqzuakjdwzqtdixgt.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbmxxenVha2pkd3pxdGRpeGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3MzI2MjIsImV4cCI6MjA2NTMwODYyMn0.QJPNQf_fThoRHs7z6HWn7L03BkUeNr-ljNwjkDW-55Y",
-      "googleMapsApiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
+        "projectId": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
+      }
     },
     "plugins": [
       "expo-asset",
@@ -66,6 +62,15 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Bu uygulama teslimat konumunuzu belirlemek için konumunuza erişim gerektirir."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/notification-sound.wav"],
+          "mode": "production"
         }
       ]
     ]

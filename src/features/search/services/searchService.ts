@@ -38,9 +38,10 @@ export const searchService = {
         .select('*', {count: 'exact'})
         .eq('is_active', true);
 
-      // Arama terimi varsa ekle
+      // Arama terimi varsa ekle (sanitize edilmiş)
       if (query && query.trim()) {
-        queryBuilder = queryBuilder.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+        const sanitizedQuery = sanitizeSearchQuery(query);
+        queryBuilder = queryBuilder.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
       }
 
       // Kategori filtresi
@@ -85,10 +86,11 @@ export const searchService = {
       .eq('product_translations.language_code', language)
       .eq('is_active', true);
 
-    // Arama terimi varsa ekle
+    // Arama terimi varsa ekle (sanitize edilmiş)
     if (query && query.trim()) {
+      const sanitizedQuery = sanitizeSearchQuery(query);
       queryBuilder = queryBuilder.or(
-        `product_translations.name.ilike.%${query}%,product_translations.description.ilike.%${query}%`,
+        `product_translations.name.ilike.%${sanitizedQuery}%,product_translations.description.ilike.%${sanitizedQuery}%`,
       );
     }
 
