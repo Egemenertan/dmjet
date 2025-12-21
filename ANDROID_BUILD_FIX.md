@@ -51,16 +51,28 @@ cd android
 ```
 
 ### EAS Build
+
+**ÖNEMLİ:** İlk build için mutlaka `production-clean` profilini kullanın:
+
 ```bash
+# İLK BUILD - Cache temizleyerek (ÖNERİLEN)
+eas build --platform android --profile production-clean
+
+# Normal production build (sonraki buildler için)
+eas build --platform android --profile production
+
 # Preview build (APK)
 eas build --platform android --profile preview
 
-# Production build
-eas build --platform android --profile production
-
-# Cache temizleyerek build
+# Manuel cache temizleme
 eas build --platform android --profile production --clear-cache
 ```
+
+**Neden production-clean?**
+- Gradle cache'i tamamen temizler
+- Kotlin versiyon çakışmalarını önler
+- Tüm bağımlılıkları sıfırdan indirir
+- İlk build için en güvenli seçenek
 
 ## Sorun Giderme
 
@@ -126,6 +138,10 @@ eas build --platform android --clear-cache
 - Kotlin versiyonu 1.9.24 → 2.1.0'a güncellendi
 - `android/gradle.properties` dosyasına Kotlin konfigürasyonu eklendi
 - `android/app/build.gradle` dosyasına Java 17 compile options ve Kotlin JVM target eklendi
+- **Resolution Strategy:** Tüm modüllerde Kotlin 2.1.0 zorlaması eklendi
+- **EAS Config:** `production-clean` profili eklendi (cache temizleme + clean build)
+- **Environment Variables:** Kotlin versiyon env variable eklendi
+- `.easignore` dosyası oluşturuldu
 
 ## Commit Geçmişi
 
@@ -134,6 +150,8 @@ eas build --platform android --clear-cache
 - `95a2224`: Expo modules entegrasyonu ve native configuration
 - `c42f131`: Dokümantasyon güncelleme
 - `7d46f41`: Kotlin 2.1.0 + Java 17 güncelleme
+- `c8ed7e0`: Dokümantasyon güncelleme
+- `155a54a`: **Kotlin resolution strategy + production-clean profili (KRİTİK)**
 
 ## Referanslar
 
