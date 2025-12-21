@@ -17,6 +17,16 @@ buildscript {
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
+    
+    // Force Kotlin version across all modules
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
+        }
+    }
 }
 
 apply plugin: "com.facebook.react.rootproject"
@@ -28,5 +38,15 @@ allprojects {
         }
         google()
         mavenCentral()
+    }
+    
+    // Force Kotlin version for all subprojects
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-stdlib:$rootProject.ext.kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$rootProject.ext.kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$rootProject.ext.kotlinVersion")
+            force("org.jetbrains.kotlin:kotlin-reflect:$rootProject.ext.kotlinVersion")
+        }
     }
 }

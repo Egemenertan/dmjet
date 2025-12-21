@@ -33,10 +33,26 @@
       },
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "gradleCommand": ":app:assembleRelease",
+        "env": {
+          "KOTLIN_VERSION": "2.1.0"
+        }
       },
       "ios": {
         "buildConfiguration": "Release"
+      }
+    },
+    "production-clean": {
+      "extends": "production",
+      "cache": {
+        "disabled": true
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": "clean :app:assembleRelease",
+        "env": {
+          "KOTLIN_VERSION": "2.1.0"
+        }
       }
     }
   },
