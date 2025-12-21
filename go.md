@@ -1,0 +1,44 @@
+ Kullanıcı Butona Tıklar
+authStore.tsLines 90-236
+signInWithGoogle: async () => {    console.log('🚀 Starting Google OAuth...')    set({ loading: true })        // Cleanup function    const cleanup = async () => {      try {        await WebBrowser.dismissAuthSession()      } catch {        // Ignore cleanup errors      }    }        try {      // 1. Initial cleanup      await cleanup()      console.log('🧹 Session cleaned up')            // 2. Start OAuth with optimized settings      const { data, error } = await supabase.auth.signInWithOAuth({        provider: 'google',        options: {          redirectTo: 'deliverymobile://google-auth',          queryParams: {            access_type: 'offline',            prompt: 'select_account', // Better UX than 'consent'          },        },      })      if (error || !data?.url) {        console.error('❌ OAuth URL hatası:', error?.message)        set({ loading: false })        return { error: 'Google OAuth bağlantısı kurulamadı' }      }      console.log('🔗 Opening OAuth browser...')            // 3. Open browser with reasonable timeout (60 seconds)      const browserResult = await Promise.race([        WebBrowser.openAuthSessionAsync(data.url, 'deliverymobile://google-auth'),        new Promise<never>((_, reject) => {          setTimeout(() => reject(new Error('Browser timeout')), 60000) // 1 minute        })      ])      // 4. Handle browser results      if (browserResult.type === 'cancel') {        console.log('ℹ️ Kullanıcı iptal etti')        set({ loading: false })        return { error: 'Google giriş iptal edildi' }      }      if (browserResult.type !== 'success' || !browserResult.url) {        console.error('❌ Browser session başarısız:', browserResult.type)        set({ loading: false })        return { error: 'OAuth akışı tamamlanamadı' }      }      console.log('✅ Browser OAuth başarılı, URL process ediliyor...')      // 5. Process the returned URL with Supabase      console.log
+2. Supabase OAuth URL'i Oluşturur
+authStore.tsLines 109-118
+const { data, error } = await supabase.auth.signInWithOAuth({        provider: 'google',        options: {          redirectTo: 'deliverymobile://google-auth',          queryParams: {            access_type: 'offline',            prompt: 'select_account', // Better UX than 'consent'          },        },      })
+Burada neler oluyor:
+provider: 'google' → Google OAuth kullanılacak
+redirectTo: 'deliverymobile://google-auth' → Giriş sonrası uygulamaya dönüş URL'i (Deep Link)
+access_type: 'offline' → Refresh token almak için
+prompt: 'select_account' → Kullanıcı her seferinde hesap seçebilir
+3. WebBrowser ile Google Giriş Sayfası Açılır
+authStore.tsLines 129-134
+const browserResult = await Promise.race([        WebBrowser.openAuthSessionAsync(data.url, 'deliverymobile://google-auth'),        new Promise<never>((_, reject) => {          setTimeout(() => reject(new Error('Browser timeout')), 60000) // 1 minute        })      ])
+Bu adımda:
+expo-web-browser paketi kullanılarak sistem tarayıcısı açılır
+Kullanıcı Google hesabını seçer ve giriş yapar
+60 saniye timeout var (kullanıcı çok uzun süre beklerse iptal olur)
+4. Google'dan Token'lar Alınır
+Kullanıcı Google'da giriş yaptıktan sonra, Google şu URL ile uygulamaya geri döner:
+deliverymobile://google-auth#access_token=xxx&refresh_token=yyy&...
+authStore.tsLines 152-218
+console.log('🔄 URL process ediliyor:', browserResult.url.substring(0, 100) + '...')            try {        // Extract the URL fragment (after #)        const url = new URL(browserResult.url)        const fragment = url.hash.substring(1) // Remove the #                if (!fragment) {          console.error('❌ URL fragment bulunamadı')          set({ loading: false })          return { error: 'OAuth response formatı geçersiz' }        }        // Parse the fragment as query parameters        const params = new URLSearchParams(fragment)        const access_token = params.get('access_token')        const refresh_token = params.get('refresh_token')                if (!access_token || !refresh_token) {          console.error('❌ Tokenlar URLde bulunamadı')          set({ loading: false })          return { error: 'OAuth tokenlari alınamadı' }        }        console.log('🔐 Tokenlar alındı, session kuruluyor...')                // Set the session with extracted tokens        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({          access_token,          refresh_token,        })        if (sessionError) {          console.error('❌ Session kurulum hatası:', sessionError.message)          set({ loading: false })          return { error: `Session kurulumu başarısız: ${sessionError.message}` }        }        if (!sessionData.session?.user) {          console.error('❌ Session kuruldu ama user bilgisi yok')          set({ loading: false })          return { error: 'Kullanıcı bilgileri alınamadı' }        }        console.log('✅ OAuth başarılı! User:', sessionData.session.user.email)                // Update state immediately        set({           user: sessionData.session.user,          session: sessionData.session,          loading: false         })        // Fetch profile in background        try {          await get().fetchProfile()        } catch (profileError) {          console.warn('⚠️ Profile fetch failed:', profileError)        }        return { error: undefined }      } catch (urlError) {        console.error('❌ URL processing hatası:', urlError)        set({ loading: false })        return { error: 'OAuth response işlenemedi' }      }
+Token İşleme:
+URL'den # sonrası fragment alınır
+access_token ve refresh_token parse edilir
+Supabase'e setSession() ile gönderilir
+Session kurulur ve kullanıcı bilgileri alınır
+5. Kullanıcı Profili Çekilir
+authStore.tsLines 395-415
+fetchProfile: async () => {    const { user } = get()    if (!user) return    try {      const { data, error } = await supabase        .from('profiles')        .select('*')        .eq('id', user.id)        .single()      if (error && error.code !== 'PGRST116') {        console.error('Error fetching profile:', error)        return      }      set({ profile: data })    } catch (error) {      console.error('Error fetching profile:', error)    }  },
+6. Uygulama İçi Yönlendirme
+LoginScreen.tsxLines 115-177
+const handleGoogleLogin = async () => {    setGoogleLoading(true)    try {      const { error } = await signInWithGoogle()      if (error) {        showMessage({          message: t('auth.googleLoginError') || 'Google Giriş Hatası',          description: error,          type: 'danger',          duration: 4000,        })      } else {        // Navigate to returnTo screen if specified        if (returnTo === 'MapSelection') {          // Use CommonActions to navigate across navigators          navigation.dispatch(            CommonActions.reset({              index: 0,              routes: [                {                  name: 'Main',                  state: {                    routes: [                      { name: 'MainTabs' },                      { name: 'MapSelection', params: returnParams }                    ],                    index: 1                  }                }              ]            })          )        } else if (returnTo === 'Profile') {          // Navigate back to Profile screen          navigation.dispatch(            CommonActions.reset({              index: 0,              routes: [                {                  name: 'Main',                  state: {                    routes: [                      {                         name: 'MainTabs',                        state: {                          routes: [                            { name: 'Home' },                            { name: 'Categories' },                            { name: 'Cart' },                            { name: 'Profile' }                          ],                          index: 3 // Profile tab index                        }                      }                    ],                    index: 0                  }                }              ]            })          )        }      }    } catch (e) {      showMessage({        message: t('errors.generic'),
+Yönlendirme Mantığı:
+Eğer kullanıcı MapSelection ekranından geliyorsa → oraya geri döner
+Eğer Profile ekranından geliyorsa → Profile tab'ına döner
+Yoksa normal akış devam eder
+
+
+
+app.json - Deep link scheme:
+app.jsonLines 73-85
+{  "expo": {    "scheme": "deliverymobile",    "ios": {      "bundleIdentifier": "com.anonymous.deliverymobile"    },    "android": {      "package": "com.anonymous.deliverymobile"    }  }

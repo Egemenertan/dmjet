@@ -1,4 +1,73 @@
 {
-  "name": "dmarjetmobile",
-  "displayName": "dmarjetmobile"
+  "expo": {
+    "name": "DmarJet Mobile",
+    "slug": "dmarjetmobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "dmarjetmobile",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dmarjet.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Bu uygulama profil fotoğrafı çekmek için kameraya erişim gerektirir.",
+        "NSPhotoLibraryUsageDescription": "Bu uygulama profil fotoğrafı seçmek için fotoğraf galerisine erişim gerektirir.",
+        "NSLocationWhenInUseUsageDescription": "Bu uygulama size yakın mağazaları göstermek ve teslimat konumunuzu belirlemek için konumunuza erişim gerektirir.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Bu uygulama teslimat konumunuzu belirlemek için konumunuza erişim gerektirir."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.dmarjet.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      },
+      "supabaseUrl": "https://jcnlqzuakjdwzqtdixgt.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbmxxenVha2pkd3pxdGRpeGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3MzI2MjIsImV4cCI6MjA2NTMwODYyMn0.QJPNQf_fThoRHs7z6HWn7L03BkUeNr-ljNwjkDW-55Y",
+      "googleMapsApiKey": "AIzaSyCoKcbCK4QJlK2E9_ETtIO4JBn-39MUJxc"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Bu uygulama teslimat konumunuzu belirlemek için konumunuza erişim gerektirir."
+        }
+      ]
+    ]
+  }
 }
