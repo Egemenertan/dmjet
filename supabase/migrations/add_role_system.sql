@@ -184,3 +184,4 @@ GRANT EXECUTE ON FUNCTION check_admin_or_courier_access() TO authenticated;
 -- -- Note: Cannot remove ENUM value 'picker' once added in PostgreSQL
 
 
+

@@ -10,3 +10,4 @@ COMMENT ON COLUMN profiles.aile_karti IS 'Family card number (Aile Kartı Numara
 
 
 
+

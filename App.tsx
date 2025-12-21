@@ -14,7 +14,7 @@ import {useAuthStore} from '@store/slices/authStore';
 import {profileService} from '@features/profile/services/profileService';
 import {NotificationProvider} from '@core/contexts/NotificationContext';
 import {colors} from '@core/constants';
-import {initSentry, ErrorBoundary, setUser, clearUser} from '@core/services/sentry';
+import {initSentry, setUser, clearUser} from '@core/services/sentry';
 import './src/localization/i18n';
 
 // Initialize Sentry
@@ -138,46 +138,17 @@ function App(): React.JSX.Element {
   }, [setSession, setProfile, setLoading]);
 
   return (
-    <ErrorBoundary
-      fallback={({error, resetError}) => (
-        <SafeAreaProvider>
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: colors.background}}>
-            <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-            <Text style={{fontSize: 24, fontWeight: 'bold', color: colors.text.primary, marginBottom: 16}}>
-              Bir hata oluştu
-            </Text>
-            <Text style={{fontSize: 16, color: colors.text.secondary, marginBottom: 24, textAlign: 'center'}}>
-              {error.message}
-            </Text>
-            <TouchableOpacity
-              onPress={resetError}
-              style={{
-                backgroundColor: colors.primary,
-                paddingHorizontal: 24,
-                paddingVertical: 12,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{color: colors.text.inverse, fontSize: 16, fontWeight: '600'}}>
-                Tekrar Dene
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaProvider>
-      )}
-    >
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <NotificationProvider>
-            <StatusBar
-              barStyle="dark-content"
-              backgroundColor={colors.background}
-            />
-            <RootNavigator />
-          </NotificationProvider>
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <NotificationProvider>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor={colors.background}
+          />
+          <RootNavigator />
+        </NotificationProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 

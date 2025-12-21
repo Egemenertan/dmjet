@@ -158,3 +158,4 @@ $$;
 -- ============================================================================
 COMMENT ON COLUMN orders.status IS 'Order status: preparing (hazırlanıyor) -> prepared (hazırlandı) -> shipping (yolda) -> delivered (teslim edildi) or cancelled (iptal)';
 
+

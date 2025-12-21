@@ -88,3 +88,4 @@ export const checkNetworkStatus = async (): Promise<boolean> => {
   return state.isConnected ?? false;
 };
 
+
