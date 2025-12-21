@@ -34,7 +34,8 @@ dependencies {
 | React Native | 0.81.5 | Mevcut versiyon |
 | Gradle | 8.13 | AGP 8.7.3 için minimum |
 | Android Gradle Plugin | 8.7.3 | Gradle 8.13+ gerektirir |
-| Kotlin | 1.9.24 | React Native 0.81 ile uyumlu |
+| Kotlin | 2.1.0 | Expo modules ile uyumlu |
+| Java | 17 | Kotlin 2.1.0 için gerekli |
 | Build Tools | 35.0.0 | En güncel |
 | Compile SDK | 35 | Android 15 |
 | Target SDK | 34 | Android 14 |
@@ -119,11 +120,20 @@ eas build --platform android --clear-cache
 - `MainApplication.kt` dosyasına `ReactNativeHostWrapper` ve `ApplicationLifecycleDispatcher` eklendi
 - `MainActivity.kt` dosyasına `ReactActivityDelegateWrapper` eklendi
 
+### 4. Kotlin Versiyon Uyumsuzluğu
+**Hata:** `Module was compiled with an incompatible version of Kotlin. The binary version of its metadata is 2.1.0, expected version is 1.9.0`
+**Çözüm:**
+- Kotlin versiyonu 1.9.24 → 2.1.0'a güncellendi
+- `android/gradle.properties` dosyasına Kotlin konfigürasyonu eklendi
+- `android/app/build.gradle` dosyasına Java 17 compile options ve Kotlin JVM target eklendi
+
 ## Commit Geçmişi
 
 - `affa8e9`: Gradle 8.13'e güncelleme
 - `02f9f32`: AGP 8.7.3 ekleme ve EAS yapılandırması
 - `95a2224`: Expo modules entegrasyonu ve native configuration
+- `c42f131`: Dokümantasyon güncelleme
+- `7d46f41`: Kotlin 2.1.0 + Java 17 güncelleme
 
 ## Referanslar
 
