@@ -84,10 +84,9 @@ yarn-error.log
 dist/
 web-build/
 
-# Documentation (internal use only)
-*_GUIDE.md
-*_CHECKLIST.md
-*_SUMMARY.md
-QUICK_START_*.md
+# Documentation (internal use only - all MD files)
+*.md
+!README.md
 secrets-to-remove.txt
 *.sh
+.git-filter-repo-analysis.txt
