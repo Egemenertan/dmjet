@@ -57,6 +57,8 @@ export const authService = {
           access_type: 'offline',
           prompt: 'select_account',
         },
+        // Use PKCE flow for better security and compatibility
+        flowType: 'pkce',
       },
     });
 
@@ -92,23 +94,57 @@ export const authService = {
     console.log('✅ Browser OAuth başarılı, URL processing...');
 
     try {
-      // Extract the URL fragment (after #)
+      // Log the full URL for debugging
+      console.log('🔍 Processing OAuth URL:', browserResult.url.substring(0, 100) + '...');
+      
       const url = new URL(browserResult.url);
-      const fragment = url.hash.substring(1); // Remove the #
+      let params: URLSearchParams;
+      let access_token: string | null = null;
+      let refresh_token: string | null = null;
 
-      if (!fragment) {
-        console.error('❌ URL fragment bulunamadı');
-        throw new Error('OAuth response formatı geçersiz');
+      // Try fragment first (after #)
+      const fragment = url.hash.substring(1);
+      if (fragment) {
+        console.log('📍 Found URL fragment, parsing...');
+        params = new URLSearchParams(fragment);
+        access_token = params.get('access_token');
+        refresh_token = params.get('refresh_token');
       }
 
-      // Parse the fragment as query parameters
-      const params = new URLSearchParams(fragment);
-      const access_token = params.get('access_token');
-      const refresh_token = params.get('refresh_token');
+      // If no tokens in fragment, try query parameters (after ?)
+      if (!access_token || !refresh_token) {
+        console.log('📍 No tokens in fragment, trying query parameters...');
+        params = new URLSearchParams(url.search);
+        access_token = params.get('access_token');
+        refresh_token = params.get('refresh_token');
+      }
+
+      // Check for authorization code (PKCE flow)
+      if (!access_token && !refresh_token) {
+        const code = params.get('code');
+        if (code) {
+          console.log('📍 Found authorization code, exchanging for tokens...');
+          // Let Supabase handle the code exchange
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('❌ Code exchange error:', error);
+            throw new Error(`Code exchange failed: ${error.message}`);
+          }
+          if (data.session) {
+            console.log('✅ OAuth successful via code exchange!');
+            return data;
+          }
+        }
+      }
 
       if (!access_token || !refresh_token) {
-        console.error('❌ Tokenlar URLde bulunamadı');
-        throw new Error('OAuth tokenlari alınamadı');
+        console.error('❌ No tokens found in URL:', {
+          hasFragment: !!fragment,
+          hasQuery: !!url.search,
+          fragmentParams: fragment ? Object.fromEntries(new URLSearchParams(fragment)) : null,
+          queryParams: url.search ? Object.fromEntries(new URLSearchParams(url.search)) : null
+        });
+        throw new Error('OAuth tokens not found in response URL');
       }
 
       console.log('🔐 Tokenlar alındı, session kuruluyor...');
@@ -131,6 +167,10 @@ export const authService = {
       }
 
       console.log('✅ OAuth başarılı! User:', sessionData.session.user.email);
+      
+      // Wait a bit for the auth state to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return sessionData;
     } catch (urlError: any) {
       console.error('❌ URL processing hatası:', urlError);

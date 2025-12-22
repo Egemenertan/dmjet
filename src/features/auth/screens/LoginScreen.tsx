@@ -6,21 +6,28 @@
 import React, {useState} from 'react';
 import {View, Text, StyleSheet, Alert, TouchableOpacity, Image} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {NavArrowLeft} from 'iconoir-react-native';
 import {Button, Input} from '@shared/ui';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {authService} from '../services/authService';
 import {useTranslation} from '@localization';
 import {GoogleIcon} from '../components/GoogleIcon';
+import {AuthStackParamList} from '@core/navigation/types';
+
+type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
+  const route = useRoute<LoginScreenRouteProp>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  
+  // Login öncesi hangi sayfadan gelindiyse oraya dönmek için
+  const returnTo = route.params?.returnTo;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,13 +39,22 @@ export const LoginScreen: React.FC = () => {
       setLoading(true);
       await authService.login({email, password});
       
-      // Önce modal'ı kapat
+      // Auth modal'ını kapat
       navigation.goBack();
       
-      // Sonra başarı mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        Alert.alert(t('common.done'), t('auth.loginSuccess'));
-      }, 300);
+      // Eğer returnTo parametresi varsa, o sayfaya yönlendir
+      if (returnTo) {
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate(returnTo as never);
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 300);
+      } else {
+        // Sadece başarı mesajı göster
+        setTimeout(() => {
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 300);
+      }
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
     } finally {
@@ -49,19 +65,43 @@ export const LoginScreen: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       setGoogleLoading(true);
-      await authService.loginWithGoogle();
+      console.log('🚀 Starting Google login from LoginScreen...');
       
-      // Önce modal'ı kapat
-      navigation.goBack();
+      const result = await authService.loginWithGoogle();
       
-      // Sonra başarı mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        Alert.alert(t('common.done'), t('auth.loginSuccess'));
-      }, 300);
+      if (result) {
+        console.log('✅ Google login successful, navigating...');
+        
+        // Wait a bit for auth state to update
+        setTimeout(() => {
+          // Auth modal'ını kapat ve ana sayfaya yönlendir
+          navigation.goBack();
+          
+          // Eğer returnTo parametresi varsa, o sayfaya yönlendir
+          if (returnTo) {
+            setTimeout(() => {
+              console.log('📍 Navigating to returnTo:', returnTo);
+              // @ts-ignore - Navigation type issue with nested navigators
+              navigation.navigate(returnTo as never);
+            }, 500);
+          } else {
+            console.log('📍 No returnTo, staying on current screen');
+          }
+          
+          // Success message
+          setTimeout(() => {
+            Alert.alert(t('common.done'), t('auth.loginSuccess'));
+          }, 800);
+        }, 1000);
+      }
     } catch (error: any) {
+      console.error('❌ Google login error in LoginScreen:', error);
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
     } finally {
-      setGoogleLoading(false);
+      // Clear loading state after a delay to prevent UI flicker
+      setTimeout(() => {
+        setGoogleLoading(false);
+      }, 1500);
     }
   };
 

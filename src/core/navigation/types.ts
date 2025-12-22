@@ -8,21 +8,21 @@ import {NavigatorScreenParams} from '@react-navigation/native';
 // Auth Stack
 export type AuthStackParamList = {
   Welcome: undefined;
-  Login: undefined;
-  Register: undefined;
+  Login: {returnTo?: keyof MainStackParamList} | undefined;
+  Register: {returnTo?: keyof MainStackParamList} | undefined;
   ForgotPassword: undefined;
 };
 
 // Home Stack (nested in Home tab)
 export type HomeStackParamList = {
   HomeMain: undefined;
-  CategoryProducts: {categoryId: string; categoryName: string};
 };
 
 // Main Stack (after authentication)
 export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
   ProductDetail: {productId: string};
+  CategoryProducts: {categoryId: string; categoryName: string};
   Checkout: undefined;
   OrderDetail: {orderId: string};
   MapSelection: undefined;

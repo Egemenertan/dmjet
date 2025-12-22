@@ -11,7 +11,7 @@ import {CartScreen} from '@features/cart/screens/CartScreen';
 import {CheckoutScreen} from '@features/cart/screens/CheckoutScreen';
 import {MapSelectionScreen} from '@features/profile/screens/MapSelectionScreen';
 import {SearchResultsScreen} from '@features/search/screens';
-import {ProductDetailScreen} from '@features/products/screens';
+import {ProductDetailScreen, CategoryProductsScreen} from '@features/products/screens';
 
 // Placeholder screens - will be implemented in features
 const OrderDetailScreen = () => null;
@@ -25,6 +25,7 @@ export const MainNavigator: React.FC = () => {
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="MapSelection" component={MapSelectionScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultsScreen} />

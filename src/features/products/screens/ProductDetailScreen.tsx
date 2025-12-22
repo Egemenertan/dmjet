@@ -40,11 +40,14 @@ export const ProductDetailScreen: React.FC = () => {
   const [imageScale] = useState(new Animated.Value(1));
   
   // Ürün detaylarını çek
-  const {data: product, isLoading} = useQuery({
+  const {data: product, isLoading, error} = useQuery({
     queryKey: ['product', productId, language],
     queryFn: async () => {
-      const products = await productsService.getProducts(language);
-      return products.find(p => p.id === productId);
+      const foundProduct = await productsService.getProductById(productId, language);
+      if (!foundProduct) {
+        throw new Error('Ürün bulunamadı');
+      }
+      return foundProduct;
     },
   });
 
@@ -78,6 +81,7 @@ export const ProductDetailScreen: React.FC = () => {
       price: product.price,
       image_url: product.image_url,
       discount: product.discount,
+      barcode: product.barcode || null,
     });
   };
 
@@ -95,11 +99,38 @@ export const ProductDetailScreen: React.FC = () => {
     }
   };
 
-  if (isLoading || !product) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft width={24} height={24} color={colors.text.primary} strokeWidth={2} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Ürün Detayı</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Ürün bulunamadı</Text>
+          <Button
+            title="Geri Dön"
+            onPress={() => navigation.goBack()}
+            variant="primary"
+            style={styles.errorButton}
+          />
         </View>
       </SafeAreaView>
     );
@@ -236,6 +267,21 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: fontSize.md,
     color: colors.text.secondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  errorText: {
+    fontSize: fontSize.xl,
+    color: colors.text.secondary,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+  },
+  errorButton: {
+    minWidth: 200,
   },
   header: {
     flexDirection: 'row',

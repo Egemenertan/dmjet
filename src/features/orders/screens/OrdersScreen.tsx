@@ -31,13 +31,14 @@ interface OrderItem {
   price: number;
   quantity: number;
   image_url?: string;
+  barcode?: number | null;
 }
 
 interface Order {
   id: string;
   created_at: string;
   total_amount: number;
-  status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled';
+  status: 'preparing' | 'prepared' | 'shipping' | 'delivered' | 'cancelled';
   payment_method: 'card' | 'cash';
   items: OrderItem[];
   shipping_address: {
@@ -48,30 +49,30 @@ interface Order {
 }
 
 const getStatusConfig = (t: any) => ({
-  pending: {
-    label: t('orders.pending'),
-    color: colors.warning,
-    bgColor: colors.warning + '15',
+  preparing: {
+    label: t('orders.preparing'),
+    color: '#f59e0b', // Amber/Turuncu
+    bgColor: '#fef3c7', // Açık sarı
   },
-  processing: {
-    label: t('orders.processing'),
-    color: colors.info,
-    bgColor: colors.info + '15',
+  prepared: {
+    label: t('orders.prepared'),
+    color: '#10b981', // Yeşil
+    bgColor: '#d1fae5', // Açık yeşil
   },
   shipping: {
     label: t('orders.shipping'),
-    color: colors.info,
-    bgColor: colors.info + '15',
+    color: '#3b82f6', // Mavi
+    bgColor: '#dbeafe', // Açık mavi
   },
   delivered: {
     label: t('orders.delivered'),
-    color: colors.success,
-    bgColor: colors.success + '15',
+    color: '#059669', // Koyu yeşil
+    bgColor: '#a7f3d0', // Mint yeşil
   },
   cancelled: {
     label: t('orders.cancelled'),
-    color: colors.error,
-    bgColor: colors.error + '15',
+    color: '#ef4444', // Kırmızı
+    bgColor: '#fee2e2', // Açık kırmızı
   },
 });
 
@@ -177,7 +178,13 @@ export const OrdersScreen: React.FC = () => {
           </Text>
           <TouchableOpacity
             style={styles.loginButton}
-            onPress={() => navigation.navigate('Auth' as never, {screen: 'Login'} as never)}
+            onPress={() => {
+              // @ts-ignore - Navigation type issue
+              navigation.navigate('Auth', {
+                screen: 'Login',
+                params: { returnTo: 'MainTabs' }
+              });
+            }}
           >
             <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
           </TouchableOpacity>
@@ -238,18 +245,9 @@ export const OrdersScreen: React.FC = () => {
             };
 
             return (
-              <TouchableOpacity
+              <View
                 key={order.id}
                 style={styles.orderCard}
-                activeOpacity={0.7}
-                onPress={() => {
-                  // Show order detail with all information
-                  Alert.alert(
-                    t('orders.orderDetail'),
-                    `${t('orders.orderId')}: ${order.id}\n${t('orders.status')}: ${statusInfo.label}\n${t('orders.total')}: ₺${order.total_amount.toFixed(2)}`,
-                    [{text: t('common.ok'), style: 'default'}]
-                  );
-                }}
               >
                 {/* Status Badge - Arka plan rengi ile */}
                 <View
@@ -367,7 +365,7 @@ export const OrdersScreen: React.FC = () => {
                     </Text>
                   </View>
                 </View>
-              </TouchableOpacity>
+              </View>
             );
           })}
         </ScrollView>
@@ -396,6 +394,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#f3f4f6',
     marginRight: spacing.md,
+    ...Platform.select({
+      android: {
+        elevation: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   title: {
     fontSize: fontSize.xxl,
@@ -431,6 +435,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,
+    ...Platform.select({
+      android: {
+        elevation: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   loginButtonText: {
     fontSize: fontSize.md,
@@ -449,27 +459,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: spacing.lg,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 1},
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    justifyContent: 'center',
+    paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   statusText: {
     fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   orderInfo: {
     padding: spacing.lg,

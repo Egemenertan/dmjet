@@ -84,14 +84,26 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
         const height = e.endCoordinates.height;
-        setKeyboardHeight(height);
-        // Klavye yüksekliğini direkt kullanıyoruz - bottom bar klavyenin hemen üzerinde olacak
-        Animated.spring(keyboardAnimation, {
-          toValue: height,
-          useNativeDriver: false,
-          tension: 50,
-          friction: 8,
-        }).start();
+        if (height > 0) {
+          setKeyboardHeight(height);
+          // Klavye yüksekliğini direkt kullanarak bottom bar'ı klavyenin hemen üzerine yerleştiriyoruz
+          // iOS'ta animasyonlu, Android'de daha hızlı animasyon
+          if (Platform.OS === 'ios') {
+            Animated.spring(keyboardAnimation, {
+              toValue: height,
+              useNativeDriver: false,
+              tension: 50,
+              friction: 8,
+            }).start();
+          } else {
+            // Android'de daha hızlı animasyon - klavye hemen üzerinde olmalı
+            Animated.timing(keyboardAnimation, {
+              toValue: height,
+              duration: 200,
+              useNativeDriver: false,
+            }).start();
+          }
+        }
       }
     );
 
@@ -99,12 +111,20 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
         setKeyboardHeight(0);
-        Animated.spring(keyboardAnimation, {
-          toValue: 0,
-          useNativeDriver: false,
-          tension: 50,
-          friction: 8,
-        }).start();
+        if (Platform.OS === 'ios') {
+          Animated.spring(keyboardAnimation, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 50,
+            friction: 8,
+          }).start();
+        } else {
+          Animated.timing(keyboardAnimation, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     );
 
@@ -132,10 +152,11 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
     } else {
       // Açılıyor - klavyeyi manuel olarak açıyoruz
       setIsSearchOpen(true);
-      // Animasyon tamamlandıktan sonra focus yap
+      // iOS'ta animasyon tamamlandıktan sonra, Android'de hemen focus yap
+      const focusDelay = Platform.OS === 'ios' ? 150 : 100;
       setTimeout(() => {
         searchInputRef.current?.focus();
-      }, 100);
+      }, focusDelay);
     }
   };
 
@@ -146,10 +167,16 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
     }
   };
 
-  // Animated values
+  // Search bar wrapper genişliği (search bar + close button + gap) - artık ortalanmış olduğu için maxWidth kullanıyoruz
+  const searchBarWrapperMaxWidth = searchAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SCREEN_WIDTH - spacing.lg * 2], // Ekran genişliği - padding
+  });
+
+  // Search bar genişliği (sadece input alanı)
   const searchBarWidth = searchAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_WIDTH - spacing.lg * 2],
+    outputRange: [0, SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs], // Wrapper genişliği - close button - gap
   });
 
   const searchBarOpacity = searchAnimation.interpolate({
@@ -167,6 +194,10 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
     outputRange: [1, 0.8],
   });
 
+
+  // Klavye açıkken search bar'ı klavyenin hemen üzerine yerleştirmek için translateY hesaplama
+  const translateY = Animated.multiply(keyboardAnimation, -1);
+
   return (
     <Animated.View
       style={[
@@ -176,12 +207,9 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
           bottom: -20,
           transform: [
             {
-              // Klavye yüksekliğini direkt kullanarak bottom bar'ı yukarı kaydırıyoruz
-              translateY: keyboardAnimation.interpolate({
-                inputRange: [0, 500],
-                outputRange: [0, -500],
-                extrapolate: 'clamp',
-              }),
+              // Klavye yüksekliğini direkt kullanarak bottom bar'ı klavyenin hemen üzerine yerleştiriyoruz
+              // Boşluk olmaması için klavye yüksekliği kadar negatif yönde kaydırıyoruz
+              translateY: translateY,
             },
           ],
         },
@@ -244,78 +272,106 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
           </BlurView>
         </Animated.View>
 
-        {/* Animated Search Bar with Liquid Glass */}
+        {/* Search Bar and Close Button Wrapper */}
         <Animated.View
           style={[
-            styles.searchBarContainer,
+            styles.searchBarWrapper,
             {
-              width: searchBarWidth,
+              maxWidth: searchBarWrapperMaxWidth,
               opacity: searchBarOpacity,
             },
           ]}
           pointerEvents={isSearchOpen ? 'auto' : 'none'}>
-          <BlurView
-            intensity={80}
-            tint="light"
-            style={styles.searchInputWrapper}>
-            <Search
-              width={20}
-              height={20}
-              color={colors.text.secondary}
-              strokeWidth={2}
-            />
-            <TextInput
-              ref={searchInputRef}
-              style={styles.searchInput}
-              placeholder={t('navigation.searchPlaceholder')}
-              placeholderTextColor={colors.text.tertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              autoFocus={isSearchOpen}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                style={styles.clearButton}>
+          {/* Animated Search Bar with Liquid Glass */}
+          <Animated.View
+            style={[
+              styles.searchBarContainer,
+              {
+                width: searchBarWidth,
+              },
+            ]}>
+            <BlurView
+              intensity={80}
+              tint="light"
+              style={styles.searchInputWrapper}>
+              <Search
+                width={20}
+                height={20}
+                color={colors.text.secondary}
+                strokeWidth={2}
+              />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder={t('navigation.searchPlaceholder')}
+                placeholderTextColor={colors.text.tertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+                autoFocus={isSearchOpen}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}>
+                  <Xmark
+                    width={18}
+                    height={18}
+                    color={colors.text.secondary}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              )}
+            </BlurView>
+          </Animated.View>
+
+          {/* Close Search Bar Button - Yanında ayrı buton */}
+          <Animated.View
+            style={[
+              styles.closeSearchButtonWrapper,
+              {
+                opacity: searchBarOpacity,
+              },
+            ]}>
+            <TouchableOpacity
+              style={styles.closeSearchButton}
+              onPress={toggleSearch}
+              activeOpacity={0.8}>
+              <BlurView
+                intensity={80}
+                tint="light"
+                style={styles.closeSearchButtonInner}>
                 <Xmark
-                  width={18}
-                  height={18}
-                  color={colors.text.secondary}
-                  strokeWidth={2}
+                  width={24}
+                  height={24}
+                  color={colors.text.primary}
+                  strokeWidth={2.5}
                 />
-              </TouchableOpacity>
-            )}
-          </BlurView>
+              </BlurView>
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
 
-        {/* Search Toggle Button with Liquid Glass */}
-        <TouchableOpacity
-          style={styles.searchButtonWrapper}
-          onPress={toggleSearch}
-          activeOpacity={0.8}>
-          <BlurView
-            intensity={80}
-            tint="light"
-            style={styles.searchButton}>
-            {isSearchOpen ? (
-              <Xmark
-                width={24}
-                height={24}
-                color={colors.text.primary}
-                strokeWidth={2.5}
-              />
-            ) : (
+        {/* Search Toggle Button - Tab bar kapalıyken görünür */}
+        {!isSearchOpen && (
+          <TouchableOpacity
+            style={styles.searchButtonWrapper}
+            onPress={toggleSearch}
+            activeOpacity={0.8}>
+            <BlurView
+              intensity={80}
+              tint="light"
+              style={styles.searchButton}>
               <Search
                 width={24}
                 height={24}
                 color={colors.text.primary}
                 strokeWidth={2.5}
               />
-            )}
-          </BlurView>
-        </TouchableOpacity>
+            </BlurView>
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -339,19 +395,21 @@ const styles = StyleSheet.create({
   },
   pillContainerWrapper: {
     flex: 1,
-    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.md, // Ekran genişliği - padding - search button - gap
+    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.md, // Ekran genişliği - padding - search button (kapalıyken) - gap
+    height: 70,
+    overflow: 'hidden',
   },
   pillContainer: {
     flexDirection: 'row',
     borderRadius: borderRadius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
     gap: spacing.xs,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(84, 176, 71, 0.2)',
     backgroundColor: 'rgba(84, 176, 71, 0.08)',
-    height: 70,
+    height: 65,
   },
   tabButton: {
     flex: 1,
@@ -361,7 +419,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    gap: 2,
+    gap: 1,
     minWidth: 60,
   },
   tabButtonActive: {
@@ -382,6 +440,45 @@ const styles = StyleSheet.create({
     height: 70,
   },
   searchButton: {
+    width: 65,
+    height: 65,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(84, 176, 71, 0.2)',
+    backgroundColor: 'rgba(84, 176, 71, 0.08)',
+  },
+  searchBarWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 70,
+    gap: spacing.xs,
+    overflow: 'visible',
+    zIndex: 1000,
+    paddingHorizontal: spacing.lg,
+  },
+  searchBarContainer: {
+    height: 65,
+    overflow: 'hidden',
+  },
+  closeSearchButtonWrapper: {
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'visible',
+    flexShrink: 0,
+  },
+  closeSearchButton: {
+    width: 70,
+    height: 70,
+  },
+  closeSearchButtonInner: {
     width: 70,
     height: 70,
     borderRadius: borderRadius.full,
@@ -391,12 +488,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(84, 176, 71, 0.2)',
     backgroundColor: 'rgba(84, 176, 71, 0.08)',
-  },
-  searchBarContainer: {
-    position: 'absolute',
-    left: 0,
-    height: 70,
-    overflow: 'hidden',
   },
   iconContainer: {
     position: 'relative',

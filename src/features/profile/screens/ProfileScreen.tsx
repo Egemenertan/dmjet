@@ -41,7 +41,7 @@ interface UserLocation {
 export const ProfileScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
-  const {user, isAuthenticated, setProfile} = useAuthStore();
+  const {user, isAuthenticated, profile, setProfile} = useAuthStore();
   const {setActiveTab} = useTabNavigation();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
@@ -78,21 +78,50 @@ export const ProfileScreen: React.FC = () => {
     }
   }, [isAuthenticated, user?.id]);
 
-  // Sayfa focus olduğunda konumu yeniden yükle
+  // Sadece profil güncellendiğinde yeniden yükle (focus değil)
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+  
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (isAuthenticated && user?.id) {
+      // Sadece 30 saniyeden eski veriler için yeniden yükle
+      const now = Date.now();
+      if (isAuthenticated && user?.id && (now - lastUpdateTime > 30000)) {
         fetchUserLocation();
       }
     });
 
     return unsubscribe;
-  }, [navigation, isAuthenticated, user?.id]);
+  }, [navigation, isAuthenticated, user?.id, lastUpdateTime]);
 
   const fetchUserLocation = async () => {
     // User kontrolü - user yoksa veya id yoksa işlemi durdur
     if (!user?.id) {
       console.warn('⚠️ fetchUserLocation: User ID bulunamadı');
+      setLoadingLocation(false);
+      return;
+    }
+
+    // Eğer profile zaten varsa ve güncel ise, cache'den kullan
+    if (profile && (Date.now() - lastUpdateTime < 30000)) {
+      console.log('📋 Cache\'den profil bilgileri kullanılıyor');
+      setUserLocation(profile.location_lat && profile.location_lng ? {
+        latitude: profile.location_lat,
+        longitude: profile.location_lng,
+        address: profile.address || undefined,
+        addressDetails: profile.address_details || undefined,
+      } : null);
+      
+      setProfileData({
+        full_name: profile.full_name,
+        phone: profile.phone,
+        country_code: profile.country_code || '+90',
+        avatar_url: profile.avatar_url,
+      });
+      
+      if (profile.aile_karti) {
+        setAileKarti(String(profile.aile_karti));
+      }
+      
       setLoadingLocation(false);
       return;
     }
@@ -112,6 +141,7 @@ export const ProfileScreen: React.FC = () => {
       
       // Eğer aile_karti kolonu yoksa, onsuz dene
       if (result.error?.code === '42703') {
+        console.log('ℹ️ aile_karti column not found, trying without it...');
         const fallbackResult = await supabase
           .from('profiles')
           .select('location_lat, location_lng, address, address_details, full_name, phone, country_code, avatar_url')
@@ -165,6 +195,26 @@ export const ProfileScreen: React.FC = () => {
           country_code: data.country_code || '+90',
           avatar_url: data.avatar_url || null,
         });
+
+        // AuthStore'u da güncelle (cache için)
+        setProfile({
+          id: user.id,
+          email: user.email,
+          full_name: data.full_name,
+          phone: data.phone,
+          country_code: data.country_code,
+          address: data.address,
+          address_details: data.address_details,
+          aile_karti: data.aile_karti,
+          location_lat: data.location_lat,
+          location_lng: data.location_lng,
+          avatar_url: data.avatar_url,
+          is_admin: profile?.is_admin || false,
+          is_active: profile?.is_active || true,
+          role: profile?.role || 'user',
+          created_at: profile?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
         
         // Push token durumunu logla
         if ('push_token' in data) {
@@ -183,6 +233,8 @@ export const ProfileScreen: React.FC = () => {
     } finally {
       // Her durumda loading'i kapat
       setLoadingLocation(false);
+      // Son güncelleme zamanını kaydet
+      setLastUpdateTime(Date.now());
     }
   };
 
@@ -291,7 +343,10 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.notLoggedInButtons}>
               <Button
                 title={t('auth.login')}
-                onPress={() => (navigation as any).navigate('Auth', {screen: 'Login'})}
+                onPress={() => (navigation as any).navigate('Auth', {
+                  screen: 'Login',
+                  params: { returnTo: 'MainTabs' }
+                })}
                 fullWidth
                 size="md"
                 rounded={true}
@@ -299,7 +354,10 @@ export const ProfileScreen: React.FC = () => {
               <Button
                 title={t('auth.register')}
                 variant="outline"
-                onPress={() => (navigation as any).navigate('Auth', {screen: 'Register'})}
+                onPress={() => (navigation as any).navigate('Auth', {
+                  screen: 'Register',
+                  params: { returnTo: 'MainTabs' }
+                })}
                 fullWidth
                 rounded={true}
                 size="md"
@@ -719,7 +777,8 @@ export const ProfileScreen: React.FC = () => {
         }}
         onSuccess={async () => {
           console.log('✅ Profile updated successfully');
-          // Profil verilerini yeniden yükle
+          // Cache'i temizle ve profil verilerini yeniden yükle
+          setLastUpdateTime(0);
           await fetchUserLocation();
           // Auth store'daki profili de güncelle
           if (user?.id) {

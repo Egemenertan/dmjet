@@ -1,52 +1,24 @@
-buildscript {
-    ext {
-        buildToolsVersion = "35.0.0"
-        minSdkVersion = 24
-        compileSdkVersion = 35
-        targetSdkVersion = 34
-        ndkVersion = "26.1.10909125"
-        kotlinVersion = "2.1.0"
-        androidGradlePluginVersion = "8.7.3"
-    }
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:$androidGradlePluginVersion")
-        classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-    }
-    
-    // Force Kotlin version across all modules
-    configurations.all {
-        resolutionStrategy {
-            force("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
-        }
-    }
-}
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-apply plugin: "com.facebook.react.rootproject"
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle')
+    classpath('com.facebook.react:react-native-gradle-plugin')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+  }
+}
 
 allprojects {
-    repositories {
-        maven {
-            url("$rootDir/../node_modules/expo-modules-core/android/maven")
-        }
-        google()
-        mavenCentral()
-    }
-    
-    // Force Kotlin version for all subprojects
-    configurations.all {
-        resolutionStrategy {
-            force("org.jetbrains.kotlin:kotlin-stdlib:$rootProject.ext.kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$rootProject.ext.kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$rootProject.ext.kotlinVersion")
-            force("org.jetbrains.kotlin:kotlin-reflect:$rootProject.ext.kotlinVersion")
-        }
-    }
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
 }
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"

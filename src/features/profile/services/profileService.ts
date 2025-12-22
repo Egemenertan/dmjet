@@ -21,21 +21,107 @@ export type ProfileData = AuthProfileData;
 
 class ProfileService {
   /**
-   * Get user profile by ID
+   * Get user profile by ID with enhanced error handling
    */
   async getProfile(userId: string): Promise<ProfileData | null> {
     try {
+      console.log(`👤 Fetching profile for user: ${userId}`);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No profile found, this is expected for new users
+          console.log(`ℹ️ No profile found for user ${userId}, will create one`);
+          return await this.createDefaultProfile(userId);
+        }
+        console.error('❌ Profile fetch error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          userId
+        });
+        throw error;
+      }
+
+      if (!data) {
+        console.warn(`⚠️ Profile query returned null for user ${userId}`);
+        return await this.createDefaultProfile(userId);
+      }
+
+      console.log('✅ Profile fetched successfully:', {
+        userId: data.id,
+        hasFullName: !!data.full_name,
+        hasPhone: !!data.phone,
+        hasAddress: !!data.address,
+        hasLocation: !!(data.location_lat && data.location_lng)
+      });
+
       return data;
-    } catch (error) {
-      console.error('Error fetching profile:', error);
+    } catch (error: any) {
+      console.error('❌ Profile service error:', {
+        message: error.message,
+        code: error.code,
+        userId
+      });
       throw error;
+    }
+  }
+
+  /**
+   * Create a default profile for new users
+   */
+  private async createDefaultProfile(userId: string): Promise<ProfileData | null> {
+    try {
+      console.log(`🆕 Creating default profile for user: ${userId}`);
+      
+      // Get user email from auth
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('❌ Cannot get user for profile creation:', userError);
+        return null;
+      }
+
+      const defaultProfile = {
+        id: userId,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || null,
+        phone: null,
+        country_code: '+90',
+        address: null,
+        address_details: null,
+        aile_karti: null,
+        location_lat: null,
+        location_lng: null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        is_admin: false,
+        is_active: true,
+        role: 'user' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(defaultProfile)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating default profile:', error);
+        throw error;
+      }
+
+      console.log('✅ Default profile created successfully');
+      return data;
+    } catch (error: any) {
+      console.error('❌ Default profile creation failed:', error);
+      // Return null instead of throwing to allow app to continue
+      return null;
     }
   }
 

@@ -35,10 +35,10 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
     marginRight: spacing.sm,
   },
   activeChip: {
@@ -55,6 +55,9 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
 });
+
+
+
 
 
 

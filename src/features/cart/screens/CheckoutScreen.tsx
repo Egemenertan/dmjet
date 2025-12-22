@@ -48,6 +48,8 @@ interface UserLocation {
   longitude: number;
   address?: string;
   addressDetails?: string;
+  phone?: string;
+  countryCode?: string;
 }
 
 type PaymentMethod = 'card' | 'cash';
@@ -103,7 +105,7 @@ export const CheckoutScreen: React.FC = () => {
       setLoadingLocation(true);
       const {data, error} = await supabase
         .from('profiles')
-        .select('location_lat, location_lng, address, address_details')
+        .select('location_lat, location_lng, address, address_details, phone, country_code')
         .eq('id', user?.id)
         .single();
 
@@ -120,6 +122,8 @@ export const CheckoutScreen: React.FC = () => {
           longitude: data.location_lng,
           address: data.address || undefined,
           addressDetails: data.address_details || undefined,
+          phone: data.phone || undefined,
+          countryCode: data.country_code || '+90',
         });
       } else {
         // Konum bilgisi yoksa null olarak bırak
@@ -135,17 +139,20 @@ export const CheckoutScreen: React.FC = () => {
 
   const handleSelectLocation = () => {
     if (!isAuthenticated) {
-      // Direkt login sayfasına yönlendir
-      navigation.navigate('Auth' as never, {screen: 'Login'} as never);
+      // Login sayfasına yönlendir ve geri dönüşte Checkout'a yönlendir
+      (navigation as any).navigate('Auth', {
+        screen: 'Login',
+        params: { returnTo: 'Checkout' }
+      });
       return;
     }
     
-    navigation.navigate('MapSelection' as never, {
+    (navigation as any).navigate('MapSelection', {
       currentLocation: userLocation,
       onLocationSelect: (location: UserLocation) => {
         setUserLocation(location);
       },
-    } as never);
+    });
   };
 
   const handlePlaceOrder = async () => {
@@ -178,6 +185,7 @@ export const CheckoutScreen: React.FC = () => {
         price: item.price,
         quantity: item.quantity,
         image_url: item.image_url,
+        barcode: item.barcode || null,
       }));
 
       const shippingAddress = {
@@ -185,6 +193,8 @@ export const CheckoutScreen: React.FC = () => {
         addressDetails: userLocation.addressDetails,
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
+        phone: userLocation.phone ? `${userLocation.countryCode} ${userLocation.phone}` : undefined,
+        full_name: 'Teslimat Adresi',
       };
 
       // Sipariş oluştur
@@ -198,7 +208,7 @@ export const CheckoutScreen: React.FC = () => {
           payment_method: paymentMethod,
           shipping_address: shippingAddress,
           items: orderItems,
-          status: 'pending',
+          status: 'preparing',
           delivery_note: orderNote.trim() || null,
         })
         .select()
@@ -319,11 +329,15 @@ export const CheckoutScreen: React.FC = () => {
                     latitudeDelta: 0.01,
                     longitudeDelta: 0.01,
                   }}
+                  mapType="standard"
                   scrollEnabled={false}
                   zoomEnabled={false}
                   pitchEnabled={false}
                   rotateEnabled={false}
                   pointerEvents="none"
+                  loadingEnabled={true}
+                  loadingIndicatorColor={colors.primary}
+                  loadingBackgroundColor={colors.background}
                 >
                   <Marker
                     coordinate={{
@@ -601,7 +615,10 @@ export const CheckoutScreen: React.FC = () => {
         {!isAuthenticated ? (
           <Button
             title={t('auth.login')}
-            onPress={() => navigation.navigate('Auth' as never, {screen: 'Login'} as never)}
+            onPress={() => (navigation as any).navigate('Auth', {
+              screen: 'Login',
+              params: { returnTo: 'Checkout' }
+            })}
             fullWidth
             rounded
           />
@@ -630,18 +647,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+   
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
       android: {
-        elevation: 2,
+        elevation: 0,
       },
     }),
   },
@@ -701,14 +710,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
       android: {
-        elevation: 4,
+        elevation: 0,
       },
     }),
   },
@@ -716,9 +719,11 @@ const styles = StyleSheet.create({
     height: 160,
     width: '100%',
     position: 'relative',
+    backgroundColor: colors.background,
   },
   map: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   editButtonContainer: {
     position: 'absolute',
@@ -734,14 +739,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     gap: spacing.xs,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
       android: {
-        elevation: 4,
+        elevation: 0,
+        borderWidth: 0,
       },
     }),
   },
@@ -813,14 +813,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
       android: {
-        elevation: 2,
+        elevation: 0,
       },
     }),
   },
@@ -875,14 +869,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     lineHeight: 22,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 1},
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
       android: {
-        elevation: 1,
+        elevation: 0,
       },
     }),
   },
@@ -900,14 +888,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
       android: {
-        elevation: 4,
+        elevation: 0,
       },
     }),
   },
@@ -984,7 +966,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   freeText: {
-    color: colors.success,
+    color: colors.primary,
   },
   totalRow: {
     flexDirection: 'row',
@@ -1008,14 +990,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: -2},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
       android: {
-        elevation: 8,
+        elevation: 0,
       },
     }),
   },

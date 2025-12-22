@@ -9,11 +9,11 @@ export default {
     slug: "dmarjetmobile",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/dmjeticon.png",
     userInterfaceStyle: "light",
     scheme: "dmarjetmobile",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/dmjet.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
@@ -35,8 +35,18 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/dmjeticon.png",
         backgroundColor: "#ffffff"
+      },
+      splash: {
+        image: "./assets/dmjet.png",
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+        mdpi: "./assets/dmjet.png",
+        hdpi: "./assets/dmjet.png",
+        xhdpi: "./assets/dmjet.png",
+        xxhdpi: "./assets/dmjet.png",
+        xxxhdpi: "./assets/dmjet.png"
       },
       package: "com.dmarjet.mobile",
       permissions: [
@@ -70,6 +80,9 @@ export default {
     plugins: [
       "expo-asset",
       "expo-font",
+      "expo-localization",
+      "expo-secure-store",
+      "expo-web-browser",
       [
         "expo-location",
         {
@@ -79,9 +92,8 @@ export default {
       [
         "expo-notifications",
         {
-          icon: "./assets/icon.png",
+          icon: "./assets/dmjeticon.png",
           color: "#ffffff",
-          sounds: ["./assets/notification-sound.wav"],
           mode: "production"
         }
       ]

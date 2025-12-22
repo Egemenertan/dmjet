@@ -4,11 +4,11 @@
     "slug": "dmarjetmobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/dmjeticon.png",
     "userInterfaceStyle": "light",
     "scheme": "dmarjetmobile",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/dmjet.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -28,7 +28,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/dmjeticon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.dmarjet.mobile",
@@ -64,7 +64,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/dmjeticon.png",
           "color": "#ffffff",
           "sounds": ["./assets/notification-sound.wav"],
           "mode": "production"

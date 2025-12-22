@@ -11,13 +11,16 @@ import {
   FlatList,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, useNavigation, RouteProp} from '@react-navigation/native';
 import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
+import {ArrowLeft} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '../services/productsService';
 import {ProductCard, CategoryCard, SubcategoryChip} from '../components';
+import {ModernBottomBar} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
@@ -36,8 +39,9 @@ export const CategoryProductsScreen: React.FC = () => {
   const initialCategoryId = route.params.categoryId;
   const initialCategoryName = route.params.categoryName;
 
-  const {addItem} = useCartStore();
+  const {addItem, items} = useCartStore();
   const {language} = useAppStore();
+  const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // State'leri local olarak yönet - navigation replace kullanma
   const [currentCategoryId, setCurrentCategoryId] = useState<string>(initialCategoryId);
@@ -85,6 +89,9 @@ export const CategoryProductsScreen: React.FC = () => {
 
   // Tüm sayfaları birleştir
   const products = productsData?.pages.flatMap((page) => page.data) || [];
+  
+  // Toplam ürün sayısını al (ilk sayfadan)
+  const totalCount = productsData?.pages[0]?.count || 0;
 
   const handleAddToCart = (product: any) => {
     const translation = product.product_translations?.[0];
@@ -94,6 +101,7 @@ export const CategoryProductsScreen: React.FC = () => {
       price: product.price,
       image_url: product.image_url,
       discount: product.discount,
+      barcode: product.barcode || null,
     });
   };
 
@@ -126,10 +134,23 @@ export const CategoryProductsScreen: React.FC = () => {
     );
   };
 
+  // Bottom bar tab change handler
+  const handleTabChange = (tab: string) => {
+    // @ts-ignore
+    navigation.navigate('MainTabs', {screen: tab});
+  };
+
+  // Bottom bar search handler
+  const handleBottomBarSearch = (query: string) => {
+    // @ts-ignore
+    navigation.navigate('SearchResults', {query});
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Sticky Header - Kategori ve Alt Kategori Filtreleri - Sabit Pozisyon */}
-      <View style={styles.stickyHeader}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Sticky Header - Kategori ve Alt Kategori Filtreleri - Sabit Pozisyon */}
+        <View style={styles.stickyHeader}>
         {/* Kategoriler - Chip Tarzında */}
         <View style={styles.categoriesSection}>
           <ScrollView
@@ -137,6 +158,19 @@ export const CategoryProductsScreen: React.FC = () => {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesScroll}>
+            {/* Geri Butonu */}
+            <TouchableOpacity
+              style={styles.backButtonChip}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}>
+              <ArrowLeft
+                width={20}
+                height={20}
+                color={colors.text.primary}
+                strokeWidth={2.5}
+              />
+            </TouchableOpacity>
+            
             {allCategories?.map((category: any) => {
               const translation = category.category_translations?.[0];
               const catName = translation?.name || category.name;
@@ -225,7 +259,7 @@ export const CategoryProductsScreen: React.FC = () => {
               <View style={styles.categoryTitleContainer}>
                 <Text style={styles.categoryTitle}>{currentCategoryName}</Text>
                 <Text style={styles.productCount}>
-                  {products.length} ürün
+                  {totalCount} ürün
                 </Text>
               </View>
             )}
@@ -245,12 +279,25 @@ export const CategoryProductsScreen: React.FC = () => {
           </View>
         )}
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+
+      {/* Modern Bottom Bar */}
+      <ModernBottomBar
+        activeTab=""
+        onTabChange={handleTabChange}
+        onSearch={handleBottomBarSearch}
+        cartItemCount={cartItemCount}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -268,6 +315,18 @@ const styles = StyleSheet.create({
   },
   categoriesScroll: {
     paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  backButtonChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   subcategoriesSection: {
     paddingBottom: spacing.sm,

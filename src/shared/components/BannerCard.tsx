@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     marginHorizontal: spacing.md,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
     // Shadow for iOS
@@ -72,6 +72,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
 });
+
+
+
+
+
 
 
 

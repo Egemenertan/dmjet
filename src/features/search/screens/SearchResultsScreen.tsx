@@ -3,7 +3,7 @@
  * Ürün arama sonuçlarını listeler
  */
 
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constan
 import {searchService} from '../services/searchService';
 import {CategoryFilter} from '../components';
 import {ProductCard} from '@features/products/components';
+import {productsService} from '@features/products/services/productsService';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
@@ -42,10 +43,62 @@ export const SearchResultsScreen: React.FC = () => {
   const [selectedCategoryName, setSelectedCategoryName] = useState<string>('Tümü');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
   const [selectedSubcategoryName, setSelectedSubcategoryName] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const {addItem, items} = useCartStore();
   const {language} = useAppStore();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Arama sorgusuna göre kategori/alt kategori eşleşmesi kontrol et
+  useEffect(() => {
+    const checkCategoryMatch = async () => {
+      if (!isInitialLoad || !initialQuery || !initialQuery.trim()) {
+        return;
+      }
+
+      try {
+        // Önce alt kategori eşleşmesi kontrol et
+        const subcategoryMatch = await searchService.findMatchingSubcategory(initialQuery);
+        if (subcategoryMatch) {
+          setSelectedCategoryId(subcategoryMatch.categoryId);
+          setSelectedSubcategoryId(subcategoryMatch.id);
+          setSelectedSubcategoryName(subcategoryMatch.name);
+          
+          // Kategori adını al
+          const categories = await productsService.getCategories(language);
+          const category = categories.find((cat: any) => cat.id === subcategoryMatch.categoryId);
+          if (category) {
+            const translation = category.category_translations?.[0];
+            setSelectedCategoryName(translation?.name || category.name);
+          }
+          
+          // Alt kategori bulunduğunda arama sorgusunu temizle
+          setSearchQuery('');
+          setIsInitialLoad(false);
+          return;
+        }
+
+        // Alt kategori yoksa kategori eşleşmesi kontrol et
+        const categoryMatch = await searchService.findMatchingCategory(initialQuery);
+        if (categoryMatch) {
+          setSelectedCategoryId(categoryMatch.id);
+          setSelectedCategoryName(categoryMatch.name);
+          // Kategori bulunduğunda arama sorgusunu temizle
+          setSearchQuery('');
+          setIsInitialLoad(false);
+          return;
+        }
+
+        // Hiçbir eşleşme yoksa normal arama yap
+        setIsInitialLoad(false);
+      } catch (error) {
+        console.error('Error checking category match:', error);
+        setIsInitialLoad(false);
+      }
+    };
+
+    checkCategoryMatch();
+  }, [initialQuery, isInitialLoad, language]);
 
   // Ürünleri ara - Infinity Scroll
   const {
@@ -85,6 +138,7 @@ export const SearchResultsScreen: React.FC = () => {
       price: product.price,
       image_url: product.image_url,
       discount: product.discount,
+      barcode: product.barcode || null,
     });
   };
 

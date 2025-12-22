@@ -3,7 +3,16 @@
     "version": ">= 5.9.0"
   },
   "build": {
+    "base": {
+      "android": {
+        "env": {
+          "GRADLE_OPTS": "-Dorg.gradle.jvmargs='-Xmx8192m -XX:MaxMetaspaceSize=3072m -XX:+HeapDumpOnOutOfMemoryError -XX:ReservedCodeCacheSize=512m' -Dkotlin.version=1.9.25 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+        },
+        "resourceClass": "large"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -14,6 +23,7 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "cache": {
         "disabled": false
@@ -27,32 +37,31 @@
       }
     },
     "production": {
+      "extends": "base",
       "distribution": "store",
       "cache": {
         "disabled": false
       },
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease",
-        "env": {
-          "KOTLIN_VERSION": "2.1.0"
-        }
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "buildConfiguration": "Release"
       }
     },
     "production-clean": {
-      "extends": "production",
+      "extends": "base",
       "cache": {
         "disabled": true
       },
+      "distribution": "store",
       "android": {
         "buildType": "apk",
-        "gradleCommand": "clean :app:assembleRelease",
-        "env": {
-          "KOTLIN_VERSION": "2.1.0"
-        }
+        "gradleCommand": "clean :app:assembleRelease"
+      },
+      "ios": {
+        "buildConfiguration": "Release"
       }
     }
   },

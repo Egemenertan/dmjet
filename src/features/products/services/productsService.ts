@@ -8,99 +8,127 @@ import {Database} from '@core/types/database.types';
 import {sanitizeSearchQuery} from '@core/utils/sanitize';
 import {getCategoryImageUrl, getProductImageUrl} from '@core/utils';
 
-type Product = Database['public']['Tables']['products']['Row'];
+type Stock = Database['public']['Tables']['stocks']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
 export const productsService = {
   /**
-   * Get products with translations
-   * TR için direkt products.name, diğer diller için translations
+   * Get products from stocks table with enhanced error handling
+   * Sadece is_active = true olan ürünleri getir
    */
   async getProducts(language: string = 'tr', limit: number = 20) {
-    // Türkçe için translation yok, direkt products tablosundan çek
-    if (language === 'tr') {
+    try {
+      console.log(`🛍️ Fetching products (language: ${language}, limit: ${limit})`);
+      
       const {data, error} = await supabase
-        .from('products')
+        .from('stocks')
         .select(`
-          *,
+          stock_id,
+          name,
+          barcode,
+          sell_price,
+          image_url,
+          balance,
+          category_id,
+          subcategory_id,
           categories(id, name)
         `)
         .eq('is_active', true)
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Products fetch error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('⚠️ Products query returned null');
+        return [];
+      }
+
+      console.log(`✅ Products fetched successfully: ${data.length} items`);
       
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      return data?.map(product => ({
-        ...product,
-        image_url: getProductImageUrl(product.image_url),
-      })) || [];
+      // stocks verisini products formatına dönüştür
+      const products = data.map(stock => ({
+        id: stock.stock_id.toString(),
+        name: stock.name || '',
+        price: stock.sell_price || 0,
+        image_url: getProductImageUrl(stock.image_url),
+        barcode: stock.barcode,
+        stock: stock.balance || 0,
+        category_id: stock.category_id,
+        subcategory_id: stock.subcategory_id,
+        discount: 0,
+        is_active: true,
+        categories: stock.categories,
+      }));
+
+      // Log sample product for debugging
+      if (products.length > 0) {
+        console.log('📦 Sample product:', {
+          id: products[0].id,
+          name: products[0].name,
+          price: products[0].price,
+          hasImage: !!products[0].image_url,
+          stock: products[0].stock
+        });
+      }
+
+      return products;
+    } catch (error: any) {
+      console.error('❌ Products service error:', {
+        message: error.message,
+        code: error.code,
+        language,
+        limit
+      });
+      
+      // Return empty array instead of throwing to prevent app crash
+      return [];
     }
-
-    // Diğer diller için translations ile çek
-    const {data, error} = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_translations!inner(name, description, language_code),
-        categories(id, name)
-      `)
-      .eq('product_translations.language_code', language)
-      .eq('is_active', true)
-      .limit(limit);
-
-    if (error) throw error;
-    
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    return data?.map(product => ({
-      ...product,
-      image_url: getProductImageUrl(product.image_url),
-    })) || [];
   },
 
   /**
-   * Get product by ID
-   * TR için direkt products.name, diğer diller için translations
+   * Get product by ID from stocks table
    */
   async getProductById(id: string, language: string = 'tr') {
-    // Türkçe için translation yok, direkt products tablosundan çek
-    if (language === 'tr') {
-      const {data, error} = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories(id, name)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      
-      // Image URL'yi Supabase Storage'dan tam URL'ye dönüştür
-      return data ? {
-        ...data,
-        image_url: getProductImageUrl(data.image_url),
-      } : null;
-    }
-
-    // Diğer diller için translations ile çek
     const {data, error} = await supabase
-      .from('products')
+      .from('stocks')
       .select(`
-        *,
-        product_translations!inner(name, description, language_code),
+        stock_id,
+        name,
+        barcode,
+        sell_price,
+        image_url,
+        balance,
+        category_id,
+        subcategory_id,
         categories(id, name)
       `)
-      .eq('id', id)
-      .eq('product_translations.language_code', language)
+      .eq('stock_id', parseInt(id))
+      .eq('is_active', true)
       .single();
 
     if (error) throw error;
     
-    // Image URL'yi Supabase Storage'dan tam URL'ye dönüştür
+    // stocks verisini products formatına dönüştür
     return data ? {
-      ...data,
+      id: data.stock_id.toString(),
+      name: data.name || '',
+      price: data.sell_price || 0,
       image_url: getProductImageUrl(data.image_url),
+      barcode: data.barcode,
+      stock: data.balance || 0,
+      category_id: data.category_id,
+      subcategory_id: data.subcategory_id,
+      discount: 0,
+      is_active: true,
+      categories: data.categories,
     } : null;
   },
 
@@ -145,89 +173,77 @@ export const productsService = {
   },
 
   /**
-   * Search products
-   * TR için direkt products.name, diğer diller için translations
+   * Search products from stocks table
    */
   async searchProducts(query: string, language: string = 'tr') {
     // Sanitize search query
     const sanitizedQuery = sanitizeSearchQuery(query);
     
-    // Türkçe için translation yok, direkt products tablosundan ara
-    if (language === 'tr') {
-      const {data, error} = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .ilike('name', `%${sanitizedQuery}%`);
-
-      if (error) throw error;
-      
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      return data?.map(product => ({
-        ...product,
-        image_url: getProductImageUrl(product.image_url),
-      })) || [];
-    }
-
-    // Diğer diller için translations ile ara
     const {data, error} = await supabase
-      .from('products')
+      .from('stocks')
       .select(`
-        *,
-        product_translations!inner(name, description, language_code)
+        stock_id,
+        name,
+        barcode,
+        sell_price,
+        image_url,
+        balance,
+        category_id,
+        subcategory_id
       `)
-      .eq('product_translations.language_code', language)
       .eq('is_active', true)
-      .ilike('product_translations.name', `%${sanitizedQuery}%`);
+      .ilike('name', `%${sanitizedQuery}%`);
 
     if (error) throw error;
     
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    return data?.map(product => ({
-      ...product,
-      image_url: getProductImageUrl(product.image_url),
+    // stocks verisini products formatına dönüştür
+    return data?.map(stock => ({
+      id: stock.stock_id.toString(),
+      name: stock.name || '',
+      price: stock.sell_price || 0,
+      image_url: getProductImageUrl(stock.image_url),
+      barcode: stock.barcode,
+      stock: stock.balance || 0,
+      category_id: stock.category_id,
+      subcategory_id: stock.subcategory_id,
+      discount: 0,
+      is_active: true,
     })) || [];
   },
 
   /**
-   * Get products by category
-   * TR için direkt products.name, diğer diller için translations
+   * Get products by category from stocks table
    */
   async getProductsByCategory(categoryId: string, language: string = 'tr') {
-    // Türkçe için translation yok, direkt products tablosundan çek
-    if (language === 'tr') {
-      const {data, error} = await supabase
-        .from('products')
-        .select('*')
-        .eq('category_id', categoryId)
-        .eq('is_active', true);
-
-      if (error) throw error;
-      
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      return data?.map(product => ({
-        ...product,
-        image_url: getProductImageUrl(product.image_url),
-      })) || [];
-    }
-
-    // Diğer diller için translations ile çek
     const {data, error} = await supabase
-      .from('products')
+      .from('stocks')
       .select(`
-        *,
-        product_translations!inner(name, description, language_code)
+        stock_id,
+        name,
+        barcode,
+        sell_price,
+        image_url,
+        balance,
+        category_id,
+        subcategory_id
       `)
       .eq('category_id', categoryId)
-      .eq('product_translations.language_code', language)
       .eq('is_active', true);
 
     if (error) throw error;
     
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    return data?.map(product => ({
-      ...product,
-      image_url: getProductImageUrl(product.image_url),
+    // stocks verisini products formatına dönüştür
+    return data?.map(stock => ({
+      id: stock.stock_id.toString(),
+      name: stock.name || '',
+      price: stock.sell_price || 0,
+      image_url: getProductImageUrl(stock.image_url),
+      barcode: stock.barcode,
+      stock: stock.balance || 0,
+      category_id: stock.category_id,
+      subcategory_id: stock.subcategory_id,
+      discount: 0,
+      is_active: true,
     })) || [];
   },
 
@@ -266,8 +282,7 @@ export const productsService = {
   },
 
   /**
-   * Get products by category and subcategory with pagination
-   * TR için direkt products.name, diğer diller için translations
+   * Get products by category and subcategory with pagination from stocks table
    */
   async getProductsByCategoryAndSubcategory(
     categoryId: string,
@@ -279,46 +294,20 @@ export const productsService = {
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
-    // Türkçe için translation yok, direkt products tablosundan çek
-    if (language === 'tr') {
-      let query = supabase
-        .from('products')
-        .select('*', {count: 'exact'})
-        .eq('category_id', categoryId)
-        .eq('is_active', true);
-
-      // Eğer subcategory seçiliyse filtrele, null ise tüm ürünleri getir
-      if (subcategoryId) {
-        query = query.eq('subcategory_id', subcategoryId);
-      }
-
-      // Pagination
-      query = query.range(from, to).order('created_at', {ascending: false});
-
-      const {data, error, count} = await query;
-      if (error) throw error;
-      
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      const productsWithImages = data?.map(product => ({
-        ...product,
-        image_url: getProductImageUrl(product.image_url),
-      })) || [];
-      
-      return {data: productsWithImages, count, hasMore: count ? to < count - 1 : false};
-    }
-
-    // Diğer diller için translations ile çek
     let query = supabase
-      .from('products')
-      .select(
-        `
-        *,
-        product_translations!inner(name, description, language_code)
-      `,
-        {count: 'exact'},
-      )
+      .from('stocks')
+      .select(`
+        stock_id,
+        name,
+        barcode,
+        sell_price,
+        image_url,
+        balance,
+        category_id,
+        subcategory_id,
+        created_at
+      `, {count: 'exact'})
       .eq('category_id', categoryId)
-      .eq('product_translations.language_code', language)
       .eq('is_active', true);
 
     // Eğer subcategory seçiliyse filtrele
@@ -332,10 +321,19 @@ export const productsService = {
     const {data, error, count} = await query;
     if (error) throw error;
     
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    const productsWithImages = data?.map(product => ({
-      ...product,
-      image_url: getProductImageUrl(product.image_url),
+    // stocks verisini products formatına dönüştür
+    const productsWithImages = data?.map(stock => ({
+      id: stock.stock_id.toString(),
+      name: stock.name || '',
+      price: stock.sell_price || 0,
+      image_url: getProductImageUrl(stock.image_url),
+      barcode: stock.barcode,
+      stock: stock.balance || 0,
+      category_id: stock.category_id,
+      subcategory_id: stock.subcategory_id,
+      discount: 0,
+      is_active: true,
+      created_at: stock.created_at,
     })) || [];
     
     return {data: productsWithImages, count, hasMore: count ? to < count - 1 : false};

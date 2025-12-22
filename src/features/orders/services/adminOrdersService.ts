@@ -11,6 +11,7 @@ export interface AdminOrderItem {
   price: number;
   quantity: number;
   image_url?: string;
+  barcode?: number | null;
 }
 
 export interface AdminOrder {

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Alert, Image} from 'react-native';
+import {View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Image, ActivityIndicator} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {useQuery} from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import {User} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '../services/productsService';
 import {ProductCard, CategoriesSection} from '../components';
-import {BannerCarousel} from '@shared/components';
+import {BannerCarousel, QueryErrorBoundary} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useAuthStore} from '@store/slices/authStore';
@@ -28,9 +28,19 @@ export const HomeScreen: React.FC = () => {
   const {isAuthenticated, user} = useAuthStore();
   const {setActiveTab} = useTabNavigation();
 
-  const {data: products, isLoading} = useQuery({
+  const {data: products, isLoading, error, refetch} = useQuery({
     queryKey: ['products', language],
     queryFn: () => productsService.getProducts(language),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    onError: (error: any) => {
+      console.error('❌ Products query error:', error);
+    },
+    onSuccess: (data) => {
+      console.log(`✅ Products query success: ${data?.length || 0} products loaded`);
+    },
   });
 
   const handleAddToCart = (product: any) => {
@@ -41,6 +51,7 @@ export const HomeScreen: React.FC = () => {
       price: product.price,
       image_url: product.image_url,
       discount: product.discount,
+      barcode: product.barcode || null,
     });
   };
 
@@ -55,12 +66,8 @@ export const HomeScreen: React.FC = () => {
 
   const handleBannerPress = (banner: any) => {
     // Banner click handling - can be extended with deep linking
-    // Currently shows informational alert
-    Alert.alert(
-      t('home.bannerTitle'),
-      t('home.bannerMessage'),
-      [{text: t('common.ok'), style: 'default'}]
-    );
+    // Currently disabled - no action on banner press
+    // You can add navigation or other actions here in the future
   };
 
   // Demo banner verileri - gerçek uygulamada Supabase'den çekilecek
@@ -91,7 +98,28 @@ export const HomeScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state with retry option
+  if (error && !products) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Ürünler yüklenemedi</Text>
+          <Text style={styles.errorText}>
+            Bağlantı sorunu yaşanıyor. Lütfen internet bağlantınızı kontrol edin.
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -117,7 +145,10 @@ export const HomeScreen: React.FC = () => {
                   setActiveTab('Profile');
                 } else {
                   // @ts-ignore - Navigation type issue
-                  navigation.navigate('Auth', {screen: 'Login'});
+                  navigation.navigate('Auth', {
+                    screen: 'Login',
+                    params: { returnTo: 'MainTabs' }
+                  });
                 }
               }}
               activeOpacity={0.8}>
@@ -210,6 +241,39 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: fontSize.md,
     color: colors.text.secondary,
+    marginTop: spacing.md,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xl,
+  },
+  errorTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 22,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
   },
   header: {
     padding: spacing.lg,

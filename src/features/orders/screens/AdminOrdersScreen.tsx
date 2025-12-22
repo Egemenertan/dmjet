@@ -90,6 +90,24 @@ export const AdminOrdersScreen: React.FC = () => {
 
   const statusConfig = getStatusConfig(t);
 
+  // GÜVENLİK KONTROLÜ: Eğer kullanıcı admin/courier/picker değilse bu ekranı gösterme
+  if (!profile || (profile.role !== 'admin' && profile.role !== 'courier' && profile.role !== 'picker')) {
+    console.error('🚫 AdminOrdersScreen: Yetkisiz erişim engellendi!', {
+      role: profile?.role,
+      canAccessAdminOrders,
+    });
+    
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.unauthorizedContainer}>
+          <Package width={80} height={80} color={colors.error} strokeWidth={2} />
+          <Text style={styles.unauthorizedTitle}>{t('admin.unauthorized')}</Text>
+          <Text style={styles.unauthorizedText}>{t('admin.unauthorizedMessage')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Filter orders based on active tab
   const orders = allOrders.filter(order => {
     if (activeTab === 'pending') {
@@ -1153,6 +1171,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  unauthorizedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  unauthorizedTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.error,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  unauthorizedText: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1220,6 +1257,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,
+    ...Platform.select({
+      android: {
+        elevation: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   refreshButtonText: {
     fontSize: fontSize.md,
@@ -1269,7 +1312,8 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 0,
+        borderWidth: 0,
       },
     }),
   },
@@ -1303,6 +1347,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
+    ...Platform.select({
+      android: {
+        elevation: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   dropdownItemShipping: {
     backgroundColor: '#9333ea', // Mor renk
@@ -1627,6 +1677,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.xs,
+    ...Platform.select({
+      android: {
+        elevation: 0,
+      },
+    }),
   },
   activeTab: {
     backgroundColor: colors.primary,
@@ -1845,7 +1900,8 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
       },
       android: {
-        elevation: 4,
+        elevation: 0,
+        borderWidth: 0,
       },
     }),
   },

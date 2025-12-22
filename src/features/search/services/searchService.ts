@@ -6,13 +6,93 @@
 import {supabase} from '@core/services/supabase';
 import {Database} from '@core/types/database.types';
 import {getProductImageUrl} from '@core/utils';
+import {sanitizeSearchQuery} from '@core/utils/sanitize';
 
-type Product = Database['public']['Tables']['products']['Row'];
+type Stock = Database['public']['Tables']['stocks']['Row'];
 
 export const searchService = {
   /**
-   * Ürün arama fonksiyonu
-   * Hem Türkçe hem de diğer diller için çalışır
+   * Arama terimine göre eşleşen kategori bul
+   * @param query - Arama terimi
+   * @returns Eşleşen kategori ID ve adı veya null
+   */
+  async findMatchingCategory(query: string): Promise<{id: string; name: string} | null> {
+    if (!query || !query.trim()) return null;
+    
+    const sanitizedQuery = sanitizeSearchQuery(query);
+    
+    // Kategori adında tam eşleşme ara
+    const {data: exactMatch} = await supabase
+      .from('categories')
+      .select('id, name')
+      .ilike('name', sanitizedQuery)
+      .limit(1);
+    
+    if (exactMatch && exactMatch.length > 0) {
+      return {id: exactMatch[0].id, name: exactMatch[0].name};
+    }
+    
+    // Tam eşleşme yoksa kısmi eşleşme ara
+    const {data: partialMatch} = await supabase
+      .from('categories')
+      .select('id, name')
+      .ilike('name', `%${sanitizedQuery}%`)
+      .limit(1);
+    
+    if (partialMatch && partialMatch.length > 0) {
+      return {id: partialMatch[0].id, name: partialMatch[0].name};
+    }
+    
+    return null;
+  },
+
+  /**
+   * Arama terimine göre eşleşen alt kategori bul
+   * @param query - Arama terimi
+   * @returns Eşleşen alt kategori ID, adı ve kategori ID'si veya null
+   */
+  async findMatchingSubcategory(query: string): Promise<{id: string; name: string; categoryId: string} | null> {
+    if (!query || !query.trim()) return null;
+    
+    const sanitizedQuery = sanitizeSearchQuery(query);
+    
+    // Alt kategori adında tam eşleşme ara
+    const {data: exactMatch} = await supabase
+      .from('subcategories')
+      .select('id, name, category_id')
+      .ilike('name', sanitizedQuery)
+      .eq('is_active', true)
+      .limit(1);
+    
+    if (exactMatch && exactMatch.length > 0) {
+      return {
+        id: exactMatch[0].id, 
+        name: exactMatch[0].name,
+        categoryId: exactMatch[0].category_id
+      };
+    }
+    
+    // Tam eşleşme yoksa kısmi eşleşme ara
+    const {data: partialMatch} = await supabase
+      .from('subcategories')
+      .select('id, name, category_id')
+      .ilike('name', `%${sanitizedQuery}%`)
+      .eq('is_active', true)
+      .limit(1);
+    
+    if (partialMatch && partialMatch.length > 0) {
+      return {
+        id: partialMatch[0].id, 
+        name: partialMatch[0].name,
+        categoryId: partialMatch[0].category_id
+      };
+    }
+    
+    return null;
+  },
+
+  /**
+   * Ürün arama fonksiyonu - stocks tablosundan
    * @param query - Arama terimi (opsiyonel - kategori filtrelemesi için boş olabilir)
    * @param language - Dil kodu (tr, en, ru)
    * @param page - Sayfa numarası
@@ -31,39 +111,81 @@ export const searchService = {
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
-    // Türkçe için direkt products tablosundan ara
-    if (language === 'tr') {
-      let queryBuilder = supabase
-        .from('products')
-        .select('*', {count: 'exact'})
+    // Eğer arama terimi varsa ve kategori/alt kategori filtresi yoksa
+    // kategori ve alt kategori adlarında da ara
+    if (query && query.trim() && !categoryId && !subcategoryId) {
+      const sanitizedQuery = sanitizeSearchQuery(query);
+      
+      // 1. Önce kategori adlarında ara
+      const {data: matchingCategories} = await supabase
+        .from('categories')
+        .select('id')
+        .ilike('name', `%${sanitizedQuery}%`);
+      
+      const categoryIds = matchingCategories?.map(cat => cat.id) || [];
+      
+      // 2. Alt kategori adlarında ara
+      const {data: matchingSubcategories} = await supabase
+        .from('subcategories')
+        .select('id, category_id')
+        .ilike('name', `%${sanitizedQuery}%`)
         .eq('is_active', true);
-
-      // Arama terimi varsa ekle (sanitize edilmiş)
-      if (query && query.trim()) {
-        const sanitizedQuery = sanitizeSearchQuery(query);
-        queryBuilder = queryBuilder.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
+      
+      const subcategoryIds = matchingSubcategories?.map(sub => sub.id) || [];
+      const categoriesFromSubcategories = matchingSubcategories?.map(sub => sub.category_id) || [];
+      
+      // Tüm eşleşen kategori ID'lerini birleştir
+      const allCategoryIds = [...new Set([...categoryIds, ...categoriesFromSubcategories])];
+      
+      // 3. Ürünleri ara - ürün adı, kategori veya alt kategori ile eşleşenler
+      let queryBuilder = supabase
+        .from('stocks')
+        .select(`
+          stock_id,
+          name,
+          barcode,
+          sell_price,
+          image_url,
+          balance,
+          category_id,
+          subcategory_id,
+          created_at
+        `, {count: 'exact'})
+        .eq('is_active', true);
+      
+      // Ürün adı, kategori veya alt kategori ile eşleşenleri getir
+      if (allCategoryIds.length > 0 || subcategoryIds.length > 0) {
+        // OR koşulu: ürün adı VEYA kategori VEYA alt kategori eşleşmesi
+        const orConditions = [
+          `name.ilike.%${sanitizedQuery}%`,
+          ...(allCategoryIds.length > 0 ? [`category_id.in.(${allCategoryIds.join(',')})`] : []),
+          ...(subcategoryIds.length > 0 ? [`subcategory_id.in.(${subcategoryIds.join(',')})`] : [])
+        ];
+        queryBuilder = queryBuilder.or(orConditions.join(','));
+      } else {
+        // Sadece ürün adında ara
+        queryBuilder = queryBuilder.ilike('name', `%${sanitizedQuery}%`);
       }
-
-      // Kategori filtresi
-      if (categoryId) {
-        queryBuilder = queryBuilder.eq('category_id', categoryId);
-      }
-
-      // Alt kategori filtresi
-      if (subcategoryId) {
-        queryBuilder = queryBuilder.eq('subcategory_id', subcategoryId);
-      }
-
+      
       const {data, error, count} = await queryBuilder
         .range(from, to)
         .order('name');
 
       if (error) throw error;
 
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      const productsWithImages = data?.map(product => ({
-        ...product,
-        image_url: getProductImageUrl(product.image_url),
+      // stocks verisini products formatına dönüştür
+      const productsWithImages = data?.map(stock => ({
+        id: stock.stock_id.toString(),
+        name: stock.name || '',
+        price: stock.sell_price || 0,
+        image_url: getProductImageUrl(stock.image_url),
+        barcode: stock.barcode,
+        stock: stock.balance || 0,
+        category_id: stock.category_id,
+        subcategory_id: stock.subcategory_id,
+        discount: 0,
+        is_active: true,
+        created_at: stock.created_at,
       })) || [];
 
       return {
@@ -72,26 +194,27 @@ export const searchService = {
         hasMore: count ? to < count - 1 : false,
       };
     }
-
-    // Diğer diller için translations ile ara
+    
+    // Normal arama (kategori filtresi varsa veya arama terimi yoksa)
     let queryBuilder = supabase
-      .from('products')
-      .select(
-        `
-        *,
-        product_translations!inner(name, description, language_code)
-      `,
-        {count: 'exact'},
-      )
-      .eq('product_translations.language_code', language)
+      .from('stocks')
+      .select(`
+        stock_id,
+        name,
+        barcode,
+        sell_price,
+        image_url,
+        balance,
+        category_id,
+        subcategory_id,
+        created_at
+      `, {count: 'exact'})
       .eq('is_active', true);
 
     // Arama terimi varsa ekle (sanitize edilmiş)
     if (query && query.trim()) {
       const sanitizedQuery = sanitizeSearchQuery(query);
-      queryBuilder = queryBuilder.or(
-        `product_translations.name.ilike.%${sanitizedQuery}%,product_translations.description.ilike.%${sanitizedQuery}%`,
-      );
+      queryBuilder = queryBuilder.ilike('name', `%${sanitizedQuery}%`);
     }
 
     // Kategori filtresi
@@ -110,10 +233,19 @@ export const searchService = {
 
     if (error) throw error;
 
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    const productsWithImages = data?.map(product => ({
-      ...product,
-      image_url: getProductImageUrl(product.image_url),
+    // stocks verisini products formatına dönüştür
+    const productsWithImages = data?.map(stock => ({
+      id: stock.stock_id.toString(),
+      name: stock.name || '',
+      price: stock.sell_price || 0,
+      image_url: getProductImageUrl(stock.image_url),
+      barcode: stock.barcode,
+      stock: stock.balance || 0,
+      category_id: stock.category_id,
+      subcategory_id: stock.subcategory_id,
+      discount: 0,
+      is_active: true,
+      created_at: stock.created_at,
     })) || [];
 
     return {

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  Platform,
 } from 'react-native';
 import {colors, spacing, borderRadius, fontSize, fontWeight} from '@core/constants';
 
@@ -83,6 +84,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     flexDirection: 'row',
     gap: spacing.sm,
+    // Android'de default elevation/shadow'u kaldır
+    ...Platform.select({
+      android: {
+        elevation: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   fullWidth: {
     width: '100%',
@@ -97,17 +105,44 @@ const styles = StyleSheet.create({
   // Variants
   primary: {
     backgroundColor: colors.primary,
+    // Android'de border yok
+    ...Platform.select({
+      android: {
+        borderWidth: 0,
+        elevation: 0,
+      },
+    }),
   },
   secondary: {
     backgroundColor: colors.surface,
+    // Android'de border yok
+    ...Platform.select({
+      android: {
+        borderWidth: 0,
+        elevation: 0,
+      },
+    }),
   },
   outline: {
     backgroundColor: colors.transparent,
     borderWidth: 1,
     borderColor: colors.primary,
+    // Android'de elevation yok
+    ...Platform.select({
+      android: {
+        elevation: 0,
+      },
+    }),
   },
   ghost: {
     backgroundColor: colors.transparent,
+    // Android'de border ve elevation yok
+    ...Platform.select({
+      android: {
+        borderWidth: 0,
+        elevation: 0,
+      },
+    }),
   },
 
   // Sizes

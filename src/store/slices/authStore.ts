@@ -42,7 +42,7 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
@@ -52,31 +52,69 @@ export const useAuthStore = create<AuthState>((set) => ({
   isPicker: false,
   canAccessAdminOrders: false,
   isLoading: true,
-  setUser: (user) =>
+  setUser: (user) => {
+    console.log('👤 Auth Store - User Set:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email
+    });
+    
     set({
       user,
       isAuthenticated: !!user,
-    }),
-  setSession: (session) =>
+    });
+  },
+  setSession: (session) => {
+    console.log('🔐 Auth Store - Session Set:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      email: session?.user?.email
+    });
+    
     set({
       session,
       user: session?.user || null,
       isAuthenticated: !!session,
-    }),
-  setProfile: (profile) =>
+    });
+  },
+  setProfile: (profile) => {
+    // Sadece role değerine göre kontrol yap - is_admin'i ignore et
+    const isAdmin = profile?.role === 'admin';
+    const isCourier = profile?.role === 'courier';
+    const isPicker = profile?.role === 'picker';
+    
+    // canAccessAdminOrders: SADECE admin, courier veya picker ise true
+    // role === 'user' ise kesinlikle false olmalı
+    const canAccessAdminOrders = profile ? (isAdmin || isCourier || isPicker) : false;
+    
+    console.log('👤 Auth Store - Profile Set:', {
+      hasProfile: !!profile,
+      role: profile?.role,
+      fullName: profile?.full_name,
+      phone: profile?.phone,
+      address: profile?.address,
+      hasLocation: !!(profile?.location_lat && profile?.location_lng),
+      isAdmin,
+      isCourier,
+      isPicker,
+      canAccessAdminOrders,
+    });
+    
     set({
       profile,
-      isAdmin: profile?.role === 'admin' || profile?.is_admin === true,
-      isCourier: profile?.role === 'courier',
-      isPicker: profile?.role === 'picker',
-      canAccessAdminOrders: 
-        profile?.role === 'admin' || 
-        profile?.role === 'courier' || 
-        profile?.role === 'picker' ||
-        profile?.is_admin === true,
-    }),
-  setLoading: (loading) => set({isLoading: loading}),
-  logout: () =>
+      isAdmin,
+      isCourier,
+      isPicker,
+      canAccessAdminOrders,
+    });
+  },
+  setLoading: (loading) => {
+    console.log('⏳ Auth Store - Loading Set:', loading);
+    set({isLoading: loading});
+  },
+  logout: () => {
+    console.log('👋 Auth Store - Logout');
     set({
       user: null,
       session: null,
@@ -86,6 +124,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       isCourier: false,
       isPicker: false,
       canAccessAdminOrders: false,
-    }),
+    });
+  },
 }));
 

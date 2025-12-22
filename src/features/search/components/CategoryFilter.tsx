@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import {useQuery} from '@tanstack/react-query';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
@@ -210,10 +211,15 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E5E5E5',
+    ...Platform.select({
+      android: {
+        elevation: 0,
+      },
+    }),
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -229,15 +235,9 @@ const styles = StyleSheet.create({
   },
   subcategoryButton: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 5,
+  
   },
   subcategoryButtonText: {
     fontSize: fontSize.xs,

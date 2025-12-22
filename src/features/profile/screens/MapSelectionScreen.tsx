@@ -80,18 +80,41 @@ export const MapSelectionScreen: React.FC = () => {
 
   // Kullanıcının kayıtlı konumunu yükle ve ardından GPS konumunu al
   useEffect(() => {
+    let mounted = true;
+    
     const initializeLocation = async () => {
-      if (isAuthenticated) {
-        await loadSavedLocation();
-      } else {
-        setLoading(false);
+      try {
+        console.log('🗺️ Initializing MapSelectionScreen...', { isAuthenticated });
+        
+        if (isAuthenticated && user?.id) {
+          console.log('👤 Loading saved location for user:', user.id);
+          await loadSavedLocation();
+        } else {
+          console.log('ℹ️ No authenticated user, skipping saved location');
+          if (mounted) {
+            setLoading(false);
+          }
+        }
+        
+        // Kayıtlı konum yüklendikten sonra GPS konumunu otomatik al
+        if (mounted) {
+          console.log('📍 Getting current GPS location...');
+          await getCurrentLocation(false);
+        }
+      } catch (error: any) {
+        console.error('❌ MapSelectionScreen initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      // Kayıtlı konum yüklendikten sonra GPS konumunu otomatik al
-      await getCurrentLocation(false);
     };
     
     initializeLocation();
-  }, [isAuthenticated]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated, user?.id]);
 
   // Kayıtlı konumu yükle (hızlı)
   const loadSavedLocation = async () => {
@@ -156,10 +179,13 @@ export const MapSelectionScreen: React.FC = () => {
     }
 
     try {
+      console.log('📍 Getting current location...', { isManual });
+      
       // Konum izni iste
       const {status} = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
+        console.warn('❌ Location permission denied');
         if (isManual) {
           Alert.alert(
             'Konum İzni Gerekli',
@@ -173,7 +199,7 @@ export const MapSelectionScreen: React.FC = () => {
           );
         } else {
           // Otomatik çağrıda sessizce geç
-          console.log('Konum izni verilmedi, varsayılan konum kullanılacak');
+          console.log('ℹ️ Location permission denied, using default location');
           setLoading(false);
         }
         return;
@@ -282,8 +308,8 @@ export const MapSelectionScreen: React.FC = () => {
       return;
     }
 
-    // Telefon kontrolü - eğer kullanıcının telefonu yoksa zorunlu
-    if (!userHasPhone && !phoneNumber.trim()) {
+    // Telefon kontrolü - her zaman zorunlu
+    if (!phoneNumber.trim()) {
       Alert.alert(t('checkout.error'), t('checkout.phoneRequired'));
       return;
     }
@@ -293,19 +319,36 @@ export const MapSelectionScreen: React.FC = () => {
       // Reverse geocoding ile adres al
       let address = selectedLocation.address;
       if (!address) {
-        const reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude: selectedLocation.latitude,
-          longitude: selectedLocation.longitude,
-        });
+        try {
+          const reverseGeocode = await Location.reverseGeocodeAsync({
+            latitude: selectedLocation.latitude,
+            longitude: selectedLocation.longitude,
+          });
 
-        if (reverseGeocode.length > 0) {
-          const addr = reverseGeocode[0];
-          address = [
-            addr.street,
-            addr.district,
-            addr.city,
-            addr.country,
-          ].filter(Boolean).join(', ');
+          if (reverseGeocode && reverseGeocode.length > 0) {
+            const addr = reverseGeocode[0];
+            // Null check'ler ekleyerek güvenli adres oluştur
+            const addressParts = [
+              addr.street,
+              addr.district,
+              addr.city,
+              addr.country,
+            ].filter(Boolean);
+            
+            if (addressParts.length > 0) {
+              address = addressParts.join(', ');
+            } else {
+              // Eğer hiç adres bilgisi yoksa koordinat kullan
+              address = `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
+            }
+          } else {
+            // Reverse geocoding sonuç vermezse koordinat kullan
+            address = `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
+          }
+        } catch (reverseGeocodeError: any) {
+          // Reverse geocoding hatası durumunda koordinat kullan
+          console.warn('Reverse geocoding hatası:', reverseGeocodeError);
+          address = `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
         }
       }
 
@@ -318,8 +361,8 @@ export const MapSelectionScreen: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Telefon bilgisi yoksa ekle
-      if (!userHasPhone && phoneNumber.trim()) {
+      // Telefon bilgisini her zaman güncelle (eğer değişmişse)
+      if (phoneNumber.trim()) {
         updateData.phone = phoneNumber.trim();
         updateData.country_code = countryCode;
       }
@@ -460,10 +503,14 @@ export const MapSelectionScreen: React.FC = () => {
                     style={styles.map}
                     initialRegion={region}
                     onRegionChangeComplete={handleRegionChangeComplete}
+                    mapType="standard"
                     showsUserLocation
                     showsMyLocationButton
                     showsCompass
                     toolbarEnabled={false}
+                    loadingEnabled={true}
+                    loadingIndicatorColor={colors.primary}
+                    loadingBackgroundColor={colors.background}
                   />
                   
                   {/* Fixed Center Pin - Yuvarlak */}
@@ -538,29 +585,29 @@ export const MapSelectionScreen: React.FC = () => {
                   />
                 </View>
 
-                {/* Phone Number Input - Only if user doesn't have phone */}
-                {!userHasPhone && (
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      {t('checkout.phoneNumber')} <Text style={styles.required}>*</Text>
-                    </Text>
-                    <View style={styles.phoneInputContainer}>
-                      <CountryCodePicker
-                        value={countryCode}
-                        onChange={setCountryCode}
-                      />
-                      <TextInput
-                        style={styles.phoneInput}
-                        placeholder={t('checkout.phoneNumberPlaceholder')}
-                        placeholderTextColor={colors.text.secondary}
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
-                    <Text style={styles.helperText}>{t('checkout.phoneRequired')}</Text>
+                {/* Phone Number Input - Always show, prefilled if user has phone */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {t('checkout.phoneNumber')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.phoneInputContainer}>
+                    <CountryCodePicker
+                      value={countryCode}
+                      onChange={setCountryCode}
+                    />
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder={t('checkout.phoneNumberPlaceholder')}
+                      placeholderTextColor={colors.text.secondary}
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                    />
                   </View>
-                )}
+                  <Text style={styles.helperText}>
+                    {userHasPhone ? t('checkout.phoneCanUpdate') : t('checkout.phoneRequired')}
+                  </Text>
+                </View>
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
@@ -575,7 +622,7 @@ export const MapSelectionScreen: React.FC = () => {
                   <Button
                     title="Kaydet"
                     onPress={handleSaveLocation}
-                    disabled={saving || (!userHasPhone && !phoneNumber.trim())}
+                    disabled={saving || !phoneNumber.trim()}
                     loading={saving}
                     fullWidth
                     rounded
@@ -694,9 +741,11 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   map: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,

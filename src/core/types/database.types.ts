@@ -822,45 +822,69 @@ export type Database = {
           balance: number | null
           barcode: string | null
           buy_price: number | null
+          category_id: string | null
           created_at: string | null
           department: number | null
           group_code: string | null
           image_url: string | null
+          is_active: boolean | null
           name: string | null
           sell_price: number | null
           special_code: string | null
           stock_id: number
+          subcategory_id: string | null
           updated_at: string | null
         }
         Insert: {
           balance?: number | null
           barcode?: string | null
           buy_price?: number | null
+          category_id?: string | null
           created_at?: string | null
           department?: number | null
           group_code?: string | null
           image_url?: string | null
+          is_active?: boolean | null
           name?: string | null
           sell_price?: number | null
           special_code?: string | null
           stock_id: number
+          subcategory_id?: string | null
           updated_at?: string | null
         }
         Update: {
           balance?: number | null
           barcode?: string | null
           buy_price?: number | null
+          category_id?: string | null
           created_at?: string | null
           department?: number | null
           group_code?: string | null
           image_url?: string | null
+          is_active?: boolean | null
           name?: string | null
           sell_price?: number | null
           special_code?: string | null
           stock_id?: number
+          subcategory_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stocks_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocks_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subcategories: {
         Row: {

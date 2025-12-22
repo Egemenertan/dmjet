@@ -6,22 +6,29 @@
 import React, {useState} from 'react';
 import {View, Text, StyleSheet, Alert, ScrollView, Image, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {NavArrowLeft} from 'iconoir-react-native';
 import {Button, Input} from '@shared/ui';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {authService} from '../services/authService';
 import {useTranslation} from '@localization';
 import {GoogleIcon} from '../components/GoogleIcon';
+import {AuthStackParamList} from '@core/navigation/types';
+
+type RegisterScreenRouteProp = RouteProp<AuthStackParamList, 'Register'>;
 
 export const RegisterScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
+  const route = useRoute<RegisterScreenRouteProp>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  
+  // Register öncesi hangi sayfadan gelindiyse oraya dönmek için
+  const returnTo = route.params?.returnTo;
 
   const handleRegister = async () => {
     if (!email || !password) {
@@ -46,13 +53,22 @@ export const RegisterScreen: React.FC = () => {
       setGoogleLoading(true);
       await authService.loginWithGoogle();
       
-      // Önce modal'ı kapat
+      // Auth modal'ını kapat
       navigation.goBack();
       
-      // Sonra başarı mesajını göster (modal kapandıktan sonra)
-      setTimeout(() => {
-        Alert.alert(t('common.done'), t('auth.loginSuccess'));
-      }, 300);
+      // Eğer returnTo parametresi varsa, o sayfaya yönlendir
+      if (returnTo) {
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate(returnTo as never);
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 300);
+      } else {
+        // Sadece başarı mesajı göster
+        setTimeout(() => {
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 300);
+      }
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
     } finally {

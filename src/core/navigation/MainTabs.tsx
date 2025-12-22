@@ -9,9 +9,9 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {HomeScreen, CategoryProductsScreen} from '@features/products/screens';
+import {HomeScreen} from '@features/products/screens';
 import {OrdersScreen} from '@features/orders/screens/OrdersScreen';
-import {AdminOrdersScreen} from '@features/orders/screens/AdminOrdersScreen';
+// import {AdminOrdersScreen} from '@features/orders/screens/AdminOrdersScreen'; // ASKIYA ALINDI
 import {CartScreen} from '@features/cart/screens/CartScreen';
 import {ProfileScreen} from '@features/profile/screens/ProfileScreen';
 import {ModernBottomBar} from '@shared/components';
@@ -24,12 +24,11 @@ const OrdersStack = createStackNavigator();
 const CartStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
-// Home Stack Navigator (Ana Sayfa + Kategori Sayfası)
+// Home Stack Navigator (Sadece Ana Sayfa)
 const HomeStackNavigator = () => {
   return (
     <HomeStack.Navigator screenOptions={{headerShown: false}}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
-      <HomeStack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
     </HomeStack.Navigator>
   );
 };
@@ -52,7 +51,8 @@ const CartStackNavigator = () => {
   );
 };
 
-// Admin Orders Stack Navigator (Admin users)
+// Admin Orders Stack Navigator (Admin users) - ASKIYA ALINDI
+/* KULLANILMIYOR - Admin paneli geçici olarak kapalı
 const AdminOrdersStackNavigator = () => {
   return (
     <CartStack.Navigator screenOptions={{headerShown: false}}>
@@ -60,6 +60,7 @@ const AdminOrdersStackNavigator = () => {
     </CartStack.Navigator>
   );
 };
+*/
 
 // Profile Stack Navigator
 const ProfileStackNavigator = () => {
@@ -74,7 +75,7 @@ const MainTabsContent: React.FC = () => {
   const {activeTab, setActiveTab} = useTabNavigation();
   const navigation = useNavigation();
   const {items} = useCartStore();
-  const {isAdmin, canAccessAdminOrders} = useAuthStore();
+  const {profile, canAccessAdminOrders} = useAuthStore();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // Orders tab'ına yönlendirme kontrolü
@@ -99,13 +100,40 @@ const MainTabsContent: React.FC = () => {
     navigation.navigate('SearchResults', {query});
   };
 
+  // ASKIYA ALINDI: Admin özellikleri geçici olarak devre dışı
+  // Tüm kullanıcılar (admin dahil) OrdersScreen'i görecek
+  const shouldShowAdminOrders = React.useMemo(() => {
+    // Admin paneli askıya alındı - herkes normal sipariş ekranını görsün
+    console.log('⚠️ MainTabs: Admin paneli askıya alındı, herkes OrdersScreen görüyor');
+    return false;
+    
+    /* ESKI KOD - ASKIYA ALINDI
+    if (!profile) {
+      console.log('⚠️ MainTabs: Profil yüklenmemiş, OrdersScreen gösteriliyor');
+      return false;
+    }
+    
+    const isAllowedRole = profile.role === 'admin' || profile.role === 'courier' || profile.role === 'picker';
+    
+    console.log('🔍 MainTabs - Role Kontrolü:', {
+      role: profile.role,
+      canAccessAdminOrders,
+      isAllowedRole,
+      willShowAdminScreen: isAllowedRole,
+    });
+    
+    return isAllowedRole;
+    */
+  }, [profile, canAccessAdminOrders]);
+
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'Home':
         return <HomeStackNavigator />;
       case 'Orders':
-        // Admin and courier users see AdminOrdersScreen, normal users see OrdersScreen
-        return canAccessAdminOrders ? <AdminOrdersStackNavigator /> : <OrdersStackNavigator />;
+        // ASKIYA ALINDI: Herkes OrdersScreen görüyor (admin paneli geçici olarak kapalı)
+        return <OrdersStackNavigator />;
+        // Eski kod: return shouldShowAdminOrders ? <AdminOrdersStackNavigator /> : <OrdersStackNavigator />;
       case 'Cart':
         return <CartStackNavigator />;
       case 'Profile':
@@ -123,7 +151,7 @@ const MainTabsContent: React.FC = () => {
         onTabChange={setActiveTab}
         onSearch={handleSearch}
         cartItemCount={cartItemCount}
-        isAdmin={canAccessAdminOrders}
+        isAdmin={false} // Admin paneli askıya alındı
       />
     </View>
   );
