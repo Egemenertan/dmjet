@@ -28,6 +28,12 @@
       "cache": {
         "disabled": false
       },
+      "env": {
+        "SUPABASE_URL": "@env:SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
+        "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "SENTRY_DSN": "@env:SENTRY_DSN"
+      },
       "ios": {
         "simulator": false
       },
@@ -41,6 +47,13 @@
       "distribution": "store",
       "cache": {
         "disabled": false
+      },
+      "env": {
+        "NODE_ENV": "production",
+        "SUPABASE_URL": "@env:SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
+        "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "SENTRY_DSN": "@env:SENTRY_DSN"
       },
       "android": {
         "buildType": "apk",
@@ -56,6 +69,13 @@
         "disabled": true
       },
       "distribution": "store",
+      "env": {
+        "NODE_ENV": "production",
+        "SUPABASE_URL": "@env:SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
+        "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "SENTRY_DSN": "@env:SENTRY_DSN"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": "clean :app:assembleRelease"

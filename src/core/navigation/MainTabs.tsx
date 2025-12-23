@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {HomeScreen} from '@features/products/screens';
 import {OrdersScreen} from '@features/orders/screens/OrdersScreen';
-// import {AdminOrdersScreen} from '@features/orders/screens/AdminOrdersScreen'; // ASKIYA ALINDI
+import {AdminOrdersScreen} from '@features/orders/screens/AdminOrdersScreen';
 import {CartScreen} from '@features/cart/screens/CartScreen';
 import {ProfileScreen} from '@features/profile/screens/ProfileScreen';
 import {ModernBottomBar} from '@shared/components';
@@ -33,11 +33,35 @@ const HomeStackNavigator = () => {
   );
 };
 
-// Orders Stack Navigator
+// Orders Stack Navigator - Role-based routing
 const OrdersStackNavigator = () => {
+  const {profile, canAccessAdminOrders} = useAuthStore();
+  
+  // Güvenlik kontrolü: Sadece picker veya courier rolü olan kullanıcılar AdminOrdersScreen'i görebilir
+  const shouldShowAdminOrders = React.useMemo(() => {
+    if (!profile) {
+      console.log('⚠️ OrdersStack: Profil yüklenmemiş, normal OrdersScreen gösteriliyor');
+      return false;
+    }
+    
+    const isAuthorizedRole = profile.role === 'picker' || profile.role === 'courier';
+    
+    console.log('🔍 OrdersStack - Role Kontrolü:', {
+      role: profile.role,
+      canAccessAdminOrders,
+      isAuthorizedRole,
+      willShowAdminScreen: isAuthorizedRole,
+    });
+    
+    return isAuthorizedRole;
+  }, [profile, canAccessAdminOrders]);
+
   return (
     <OrdersStack.Navigator screenOptions={{headerShown: false}}>
-      <OrdersStack.Screen name="OrdersMain" component={OrdersScreen} />
+      <OrdersStack.Screen 
+        name="OrdersMain" 
+        component={shouldShowAdminOrders ? AdminOrdersScreen : OrdersScreen} 
+      />
     </OrdersStack.Navigator>
   );
 };
@@ -100,31 +124,8 @@ const MainTabsContent: React.FC = () => {
     navigation.navigate('SearchResults', {query});
   };
 
-  // ASKIYA ALINDI: Admin özellikleri geçici olarak devre dışı
-  // Tüm kullanıcılar (admin dahil) OrdersScreen'i görecek
-  const shouldShowAdminOrders = React.useMemo(() => {
-    // Admin paneli askıya alındı - herkes normal sipariş ekranını görsün
-    console.log('⚠️ MainTabs: Admin paneli askıya alındı, herkes OrdersScreen görüyor');
-    return false;
-    
-    /* ESKI KOD - ASKIYA ALINDI
-    if (!profile) {
-      console.log('⚠️ MainTabs: Profil yüklenmemiş, OrdersScreen gösteriliyor');
-      return false;
-    }
-    
-    const isAllowedRole = profile.role === 'admin' || profile.role === 'courier' || profile.role === 'picker';
-    
-    console.log('🔍 MainTabs - Role Kontrolü:', {
-      role: profile.role,
-      canAccessAdminOrders,
-      isAllowedRole,
-      willShowAdminScreen: isAllowedRole,
-    });
-    
-    return isAllowedRole;
-    */
-  }, [profile, canAccessAdminOrders]);
+  // Role-based navigation artık OrdersStackNavigator içinde yapılıyor
+  // MainTabs sadece tab switching ile ilgileniyor
 
   const renderActiveScreen = () => {
     switch (activeTab) {

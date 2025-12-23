@@ -42,6 +42,7 @@ import {
   meetsMinimumOrder,
 } from '../services/deliveryService';
 import {DeliverySettings} from '../types';
+import {isInDeliveryArea} from '@core/utils/polygon';
 
 interface UserLocation {
   latitude: number;
@@ -67,6 +68,7 @@ export const CheckoutScreen: React.FC = () => {
   const [orderNote, setOrderNote] = useState('');
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [isLocationInDeliveryArea, setIsLocationInDeliveryArea] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -117,14 +119,20 @@ export const CheckoutScreen: React.FC = () => {
       }
 
       if (data?.location_lat && data?.location_lng) {
-        setUserLocation({
+        const location = {
           latitude: data.location_lat,
           longitude: data.location_lng,
           address: data.address || undefined,
           addressDetails: data.address_details || undefined,
           phone: data.phone || undefined,
           countryCode: data.country_code || '+90',
-        });
+        };
+        
+        // Teslimat alanı kontrolü
+        const inDeliveryArea = isInDeliveryArea(location);
+        setIsLocationInDeliveryArea(inDeliveryArea);
+        
+        setUserLocation(location);
       } else {
         // Konum bilgisi yoksa null olarak bırak
         setUserLocation(null);
@@ -150,6 +158,10 @@ export const CheckoutScreen: React.FC = () => {
     (navigation as any).navigate('MapSelection', {
       currentLocation: userLocation,
       onLocationSelect: (location: UserLocation) => {
+        // Teslimat alanı kontrolü
+        const inDeliveryArea = isInDeliveryArea(location);
+        setIsLocationInDeliveryArea(inDeliveryArea);
+        
         setUserLocation(location);
       },
     });
@@ -397,6 +409,16 @@ export const CheckoutScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           )}
+          
+          {/* Teslimat Alanı Uyarısı */}
+          {userLocation && !isLocationInDeliveryArea && (
+            <View style={styles.deliveryWarningContainer}>
+              <Text style={styles.deliveryWarningTitle}>⚠️ Teslimat Alanı Dışında</Text>
+              <Text style={styles.deliveryWarningText}>
+                Seçtiğiniz adres teslimat alanımız dışında kalmaktadır. Lütfen teslimat alanımız içerisinden bir adres seçiniz.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Ödeme Yöntemi Bölümü */}
@@ -628,7 +650,7 @@ export const CheckoutScreen: React.FC = () => {
             onPress={handlePlaceOrder}
             fullWidth
             rounded
-            disabled={isPlacingOrder || !userLocation || !canPlaceOrder}
+            disabled={isPlacingOrder || !userLocation || !canPlaceOrder || !isLocationInDeliveryArea}
           />
         )}
       </View>
@@ -1042,6 +1064,25 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: '#0C5460',
     textAlign: 'center',
+  },
+  deliveryWarningContainer: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  deliveryWarningTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+    color: '#856404',
+    marginBottom: spacing.xs,
+  },
+  deliveryWarningText: {
+    fontSize: fontSize.sm,
+    color: '#856404',
+    lineHeight: 20,
   },
 });
 

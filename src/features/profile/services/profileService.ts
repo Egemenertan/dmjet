@@ -5,6 +5,7 @@
 
 import { supabase } from '@core/services/supabase';
 import { ProfileData as AuthProfileData } from '@store/slices/authStore';
+import { auth } from '@core/utils';
 
 export interface UpdateProfileData {
   full_name?: string;
@@ -25,7 +26,7 @@ class ProfileService {
    */
   async getProfile(userId: string): Promise<ProfileData | null> {
     try {
-      console.log(`👤 Fetching profile for user: ${userId}`);
+      auth.debug(`Fetching profile for user: ${userId}`);
       
       const { data, error } = await supabase
         .from('profiles')
@@ -53,11 +54,9 @@ class ProfileService {
         return await this.createDefaultProfile(userId);
       }
 
-      console.log('✅ Profile fetched successfully:', {
+      auth.debug('Profile fetched successfully', {
         userId: data.id,
         hasFullName: !!data.full_name,
-        hasPhone: !!data.phone,
-        hasAddress: !!data.address,
         hasLocation: !!(data.location_lat && data.location_lng)
       });
 

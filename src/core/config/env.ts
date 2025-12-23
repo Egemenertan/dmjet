@@ -21,10 +21,14 @@ export const env = {
 
 // Validation: Ensure required environment variables are set
 if (!env.supabase.url || !env.supabase.anonKey) {
-  console.error('❌ Missing required Supabase configuration. Please check your environment variables.');
+  if (__DEV__) {
+    console.error('❌ Missing required Supabase configuration. Please check your environment variables.');
+  }
 }
 
 if (!env.googleMaps.apiKey) {
-  console.warn('⚠️ Missing Google Maps API Key. Map features may not work properly.');
+  if (__DEV__) {
+    console.warn('⚠️ Missing Google Maps API Key. Map features may not work properly.');
+  }
 }
 

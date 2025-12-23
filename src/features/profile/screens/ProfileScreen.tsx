@@ -48,26 +48,18 @@ export const ProfileScreen: React.FC = () => {
   const [aileKarti, setAileKarti] = useState<string>('');
   const [isEditingFamilyCard, setIsEditingFamilyCard] = useState(false);
   const [savingFamilyCard, setSavingFamilyCard] = useState(false);
-  const [profileData, setProfileData] = useState<{
-    full_name: string | null;
-    phone: string | null;
-    country_code: string | null;
-    avatar_url: string | null;
-  }>({
-    full_name: null,
-    phone: null,
-    country_code: null,
-    avatar_url: null,
-  });
+  // Profile data artık AuthStore'dan geliyor
+  const profileData = {
+    full_name: profile?.full_name || null,
+    phone: profile?.phone || null,
+    country_code: profile?.country_code || '+90',
+    avatar_url: profile?.avatar_url || null,
+  };
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
-  // Debug: Modal state değişimini logla
-  useEffect(() => {
-    console.log('🔍 Edit Modal Visible:', isEditModalVisible);
-    console.log('📝 Profile Data:', profileData);
-  }, [isEditModalVisible, profileData]);
+  // Modal state tracking removed - not needed in production
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
@@ -188,13 +180,7 @@ export const ProfileScreen: React.FC = () => {
           setAileKarti(String(data.aile_karti));
         }
 
-        // Profil bilgilerini yükle
-        setProfileData({
-          full_name: data.full_name || null,
-          phone: data.phone || null,
-          country_code: data.country_code || '+90',
-          avatar_url: data.avatar_url || null,
-        });
+        // Profil bilgileri artık AuthStore'dan geliyor
 
         // AuthStore'u da güncelle (cache için)
         setProfile({
@@ -415,15 +401,15 @@ export const ProfileScreen: React.FC = () => {
                     />
                   </View>
                 )}
-                {/* Camera Icon Overlay */}
-                <TouchableOpacity style={styles.cameraIconButton}>
+                {/* Camera Icon Overlay - Temporarily Hidden */}
+                {/* <TouchableOpacity style={styles.cameraIconButton}>
                   <Camera
                     width={16}
                     height={16}
                     color="#fff"
                     strokeWidth={2}
                   />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
               <View style={styles.profileTextSection}>
                 <Text style={styles.profileName}>
@@ -483,7 +469,12 @@ export const ProfileScreen: React.FC = () => {
                   <Text style={styles.infoLabel}>{t('profile.phone')}</Text>
                   <Text style={styles.infoValue}>
                     {profileData.phone 
-                      ? `${profileData.country_code || '+90'} ${profileData.phone}`
+                      ? (() => {
+                          // Telefon numarasını temizle ve formatla
+                          const cleanPhone = profileData.phone.replace(/\D/g, '');
+                          const countryCode = profileData.country_code || '+90';
+                          return `${countryCode} ${cleanPhone}`;
+                        })()
                       : t('profile.notSpecified')}
                   </Text>
                 </View>
@@ -510,8 +501,8 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Family Card Section */}
-        <View style={styles.section}>
+        {/* Family Card Section - Temporarily Hidden */}
+        {/* <View style={styles.section}>
           <View style={styles.familyCardHeader}>
             <Text style={styles.sectionTitle}>{t('profile.familyCard')}</Text>
             {!isEditingFamilyCard && (
@@ -535,13 +526,11 @@ export const ProfileScreen: React.FC = () => {
           <View style={styles.familyCardContentWrapper}>
             {isEditingFamilyCard ? (
             <View style={styles.familyCardEditContainer}>
-              {/* Aile Kartı Görseli */}
               <ImageBackground
                 source={require('../../../../assets/ailecard.png')}
                 style={styles.cardImage}
                 resizeMode="contain"
               >
-                {/* Kart Numarası Overlay */}
                 <View style={styles.cardNumberOverlay}>
                   <Text style={styles.cardNumberText}>
                     {aileKarti || '---- ---- ---- ----'}
@@ -549,7 +538,6 @@ export const ProfileScreen: React.FC = () => {
                 </View>
               </ImageBackground>
 
-              {/* Input Alanı - Kartın Altında */}
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>{t('profile.familyCardNumber')}</Text>
                 <TextInput
@@ -596,7 +584,6 @@ export const ProfileScreen: React.FC = () => {
                 style={styles.cardImageDisplay}
                 resizeMode="contain"
               >
-                {/* Kart Numarası Overlay */}
                 <View style={styles.cardNumberOverlayDisplay}>
                   <Text style={styles.cardNumberTextDisplay}>
                     {aileKarti || '---- ---- ---- ----'}
@@ -606,7 +593,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           )}
           </View>
-        </View>
+        </View> */}
 
         {/* Location Section */}
         <View style={styles.section}>
@@ -731,8 +718,8 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Settings Section */}
-        <View style={styles.section}>
+        {/* Settings Section - Temporarily Hidden */}
+        {/* <View style={styles.section}>
           <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
             <View style={styles.actionButtonContent}>
               <Settings
@@ -744,7 +731,7 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.actionButtonText}>{t('profile.settings')}</Text>
             </View>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Logout Section */}
         <View style={styles.section}>

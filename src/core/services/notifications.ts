@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
-// Notification handler configuration
+// Notification handler configuration - Bildirimlerin nasıl gösterileceğini belirler
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -35,103 +35,112 @@ export interface SendNotificationParams {
 class NotificationService {
   /**
    * Push notification izni iste ve token al
+   * Yeniden tasarlanmış ve geliştirilmiş versiyon
    */
   async registerForPushNotifications(): Promise<string | null> {
     try {
-      console.log('📱 Cihaz kontrolü yapılıyor...');
-      
       // Fiziksel cihaz kontrolü
       if (!Device.isDevice) {
-        console.warn('⚠️ UYARI: Push notification sadece fiziksel cihazlarda çalışır!');
-        console.warn('⚠️ Şu anda emulator/simulator kullanıyorsunuz');
-        return null;
+        console.warn('⚠️ Push notification: Emulator kullanımı - fiziksel cihaz gerekli');
+        return 'simulator-token-placeholder';
       }
-      
-      console.log('✅ Fiziksel cihaz tespit edildi');
 
       // Mevcut izin durumunu kontrol et
-      console.log('🔐 Bildirim izni kontrol ediliyor...');
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
       // İzin yoksa iste
       if (existingStatus !== 'granted') {
-        console.log('❓ İzin isteniyor...');
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+            allowDisplayInCarPlay: true,
+            allowCriticalAlerts: false,
+            provideAppNotificationSettings: true,
+            allowProvisional: false,
+            allowAnnouncements: false,
+          },
+        });
         finalStatus = status;
       }
 
       // İzin verilmediyse null dön
       if (finalStatus !== 'granted') {
-        console.warn('❌ Bildirim izni verilmedi!');
-        console.warn('💡 Ayarlar > Bildirimler > DmarJet > İzin Ver');
+        console.warn('❌ Push notification izni verilmedi - Ayarlar > Bildirimler > DmarJet');
         return null;
       }
-      
-      console.log('✅ Bildirim izni var');
+
+      // Android icin notification channellari olustur (iOS'ta otomatik)
+      if (Platform.OS === 'android') {
+        // Siparis bildirimleri icin yuksek oncelikli kanal
+        await Notifications.setNotificationChannelAsync('orders', {
+          name: 'Siparis Bildirimleri',
+          description: 'Siparis durumu ve teslimat bildirimleri',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF6B35',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // Genel bildirimler icin normal oncelikli kanal
+        await Notifications.setNotificationChannelAsync('general', {
+          name: 'Genel Bildirimler',
+          description: 'Promosyonlar ve genel bilgilendirmeler',
+          importance: Notifications.AndroidImportance.DEFAULT,
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // Kupon ve firsatlar icin ozel kanal
+        await Notifications.setNotificationChannelAsync('promotions', {
+          name: 'Kupon ve Firsatlar',
+          description: 'Indirim kuponlari ve ozel firsatlar',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: false,
+          showBadge: true,
+        });
+      }
 
       // Expo push token al
-      console.log('🎫 Expo push token alınıyor...');
-      
-      // EAS projectId varsa kullan, yoksa boş bırak (Expo Go için)
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      console.log('📋 Project ID:', projectId || 'YOK (Expo Go modu)');
       
       let tokenData;
       try {
         if (projectId) {
-          // ProjectId varsa kullan (EAS Build)
-          console.log('📋 EAS Build modu - Project ID kullanılıyor');
           tokenData = await Notifications.getExpoPushTokenAsync({ 
             projectId: projectId 
           });
         } else {
-          // Expo Go modu - parametresiz çağır
-          console.log('📋 Expo Go modu - projectId olmadan token alınıyor');
           tokenData = await Notifications.getExpoPushTokenAsync();
         }
         
-        console.log('✅ Token alındı:', tokenData.data);
+        return tokenData.data;
       } catch (tokenError: any) {
-        console.error('❌ Token alma hatası:', tokenError);
-        console.error('   Error message:', tokenError.message);
+        console.error('❌ Push token alma hatası:', tokenError.message);
         
-        // Hata durumunda Expo Go modu ile tekrar dene
+        // Fallback: ProjectId olmadan dene
         if (projectId) {
-          console.log('🔄 ProjectId olmadan tekrar deneniyor...');
           try {
             tokenData = await Notifications.getExpoPushTokenAsync();
-            console.log('✅ Token alındı (fallback):', tokenData.data);
+            return tokenData.data;
           } catch (fallbackError) {
-            console.error('❌ Fallback de başarısız:', fallbackError);
             throw fallbackError;
           }
         } else {
           throw tokenError;
         }
       }
-
-      // Android için notification channel oluştur
-      if (Platform.OS === 'android') {
-        console.log('📢 Android notification channel oluşturuluyor...');
-        await Notifications.setNotificationChannelAsync('orders', {
-          name: 'Sipariş Bildirimleri',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-        });
-
-        await Notifications.setNotificationChannelAsync('general', {
-          name: 'Genel Bildirimler',
-          importance: Notifications.AndroidImportance.DEFAULT,
-          sound: 'default',
-        });
-      }
-
-      return tokenData.data;
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      console.error('❌ Push notification kayıt hatası:', error);
       return null;
     }
   }
@@ -141,10 +150,6 @@ class NotificationService {
    */
   async savePushToken(userId: string, pushToken: string): Promise<boolean> {
     try {
-      console.log('💾 Push token kaydediliyor...');
-      console.log('   User ID:', userId);
-      console.log('   Token:', pushToken.substring(0, 30) + '...');
-      
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -155,23 +160,18 @@ class NotificationService {
         .select();
 
       if (error) {
-        console.error('❌ Push token kaydetme hatası:', error);
-        console.error('   Error code:', error.code);
-        console.error('   Error message:', error.message);
-        console.error('   Error details:', error.details);
+        console.error('❌ Push token kaydetme hatası:', error.message);
         return false;
       }
 
       if (!data || data.length === 0) {
-        console.error('❌ Kullanıcı bulunamadı! User ID:', userId);
+        console.error('❌ Kullanıcı bulunamadı:', userId);
         return false;
       }
 
-      console.log('✅ Push token başarıyla kaydedildi!');
-      console.log('   Güncellenen kayıt:', data[0]);
       return true;
     } catch (error) {
-      console.error('❌ Push token kaydetme exception:', error);
+      console.error('❌ Push token kaydetme hatası:', error);
       return false;
     }
   }

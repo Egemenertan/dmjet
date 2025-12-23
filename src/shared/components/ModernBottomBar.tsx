@@ -21,7 +21,7 @@ import {BlurView} from 'expo-blur';
 import {
   Home,
   DeliveryTruck,
-  Cart,
+  ShoppingBag,
   Search,
   Xmark,
 } from 'iconoir-react-native';
@@ -54,7 +54,7 @@ const getTabsConfig = (isAdmin: boolean): BottomBarItem[] => [
   },
   {
     key: 'Cart',
-    icon: Cart,
+    icon: ShoppingBag,
     labelKey: 'navigation.cart',
   },
 ];

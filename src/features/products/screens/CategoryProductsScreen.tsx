@@ -20,7 +20,7 @@ import {ArrowLeft} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '../services/productsService';
 import {ProductCard, CategoryCard, SubcategoryChip} from '../components';
-import {ModernBottomBar} from '@shared/components';
+import {ModernBottomBar, LogoLoader} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
@@ -226,10 +226,7 @@ export const CategoryProductsScreen: React.FC = () => {
       {/* Ürünler Listesi - Sadece Bu Alan Yenilenir */}
       <View style={styles.productsContainer}>
         {productsLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Ürünler yükleniyor...</Text>
-          </View>
+          <LogoLoader text="Ürünler yükleniyor..." />
         ) : products && products.length > 0 ? (
           <FlatList
             data={products}

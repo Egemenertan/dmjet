@@ -20,6 +20,7 @@ import {
 import {Search, Xmark, Pin, Building} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {env} from '@core/config/env';
+import {isInDeliveryArea} from '@core/utils/polygon';
 
 interface PlaceResult {
   place_id: string;
@@ -219,6 +220,14 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
         ) {
           console.warn('Location outside North Cyprus bounds');
           return;
+        }
+
+        // Teslimat alanı kontrolü
+        const coordinate = { latitude: location.lat, longitude: location.lng };
+        if (!isInDeliveryArea(coordinate)) {
+          console.warn('Location outside delivery area');
+          // Teslimat alanı dışında olsa bile sonucu göster, ama uyarı ile
+          // return; // Bu satırı kaldırıyoruz ki kullanıcı görebilsin
         }
 
         // Şehir ve ilçe bilgilerini parse et

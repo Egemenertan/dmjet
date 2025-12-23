@@ -23,6 +23,7 @@ import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
 import {supabase} from '@core/services/supabase';
 import {useTabNavigation} from '@core/navigation/TabContext';
+import {LogoLoader} from '@shared/components';
 import {getProductImageUrl} from '@core/utils';
 
 interface OrderItem {
@@ -213,9 +214,7 @@ export const OrdersScreen: React.FC = () => {
 
       {/* Orders List */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <LogoLoader />
       ) : displayOrders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Package width={80} height={80} color={colors.text.tertiary} />

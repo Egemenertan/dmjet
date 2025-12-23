@@ -16,6 +16,7 @@ import {NotificationProvider} from '@core/contexts/NotificationContext';
 import {ErrorBoundary} from '@shared/components/ErrorBoundary';
 import {colors} from '@core/constants';
 import {initSentry, setUser, clearUser} from '@core/services/sentry';
+import {auth} from '@core/utils';
 import './src/localization/i18n';
 
 // Initialize Sentry
@@ -69,18 +70,19 @@ function App(): React.JSX.Element {
     // Enhanced profile fetching with retry logic
     const fetchProfileWithRetry = async (userId: string): Promise<void> => {
       try {
-        console.log(`👤 Fetching profile for user ${userId} (attempt ${profileRetryCount + 1}/${MAX_PROFILE_RETRIES + 1})`);
+        auth.debug(`Fetching profile for user ${userId}`, {
+          attempt: profileRetryCount + 1,
+          maxRetries: MAX_PROFILE_RETRIES + 1
+        });
         
         const profile = await profileService.getProfile(userId);
         
         if (!mounted) return;
         
         if (profile) {
-          console.log('✅ Profile loaded successfully:', {
+          auth.info('Profile loaded successfully', {
             id: profile.id,
             hasFullName: !!profile.full_name,
-            hasPhone: !!profile.phone,
-            hasAddress: !!profile.address,
             hasLocation: !!(profile.location_lat && profile.location_lng)
           });
           
@@ -93,7 +95,7 @@ function App(): React.JSX.Element {
             fullName: profile.full_name,
           });
         } else {
-          console.warn('⚠️ Profile is null, creating default profile entry');
+          auth.warn('Profile is null, creating default profile entry');
           setProfile(null);
         }
         

@@ -1,138 +1,117 @@
 /**
  * Logger Utility
- * Provides safe logging that respects environment (dev/prod)
- * Integrated with Sentry for error tracking
+ * Development/Production için akıllı logging sistemi
  */
 
-import { captureException, captureMessage, addBreadcrumb } from '@/core/services/sentry';
+// React Native'de __DEV__ global olarak mevcut
+declare const __DEV__: boolean;
 
-const isDev = __DEV__;
-
-/**
- * Safe logger that only logs in development mode
- * In production, only errors and warnings are logged
- */
-export const logger = {
-  /**
-   * Log general information (dev only)
-   */
-  log: (...args: any[]) => {
-    if (isDev) {
-      console.log(...args);
-    }
-  },
-
-  /**
-   * Log errors (always logged and sent to Sentry)
-   */
-  error: (...args: any[]) => {
-    console.error(...args);
-    
-    // Send to Sentry in production
-    if (!isDev) {
-      const error = args[0];
-      if (error instanceof Error) {
-        captureException(error, { additionalData: args.slice(1) });
-      } else {
-        captureMessage(String(error), 'error', { additionalData: args });
-      }
-    }
-  },
-
-  /**
-   * Log warnings (always logged and sent to Sentry)
-   */
-  warn: (...args: any[]) => {
-    console.warn(...args);
-    
-    // Send to Sentry as warning in production
-    if (!isDev) {
-      captureMessage(String(args[0]), 'warning', { additionalData: args.slice(1) });
-    }
-  },
-
-  /**
-   * Log debug information (dev only)
-   */
-  debug: (...args: any[]) => {
-    if (isDev) {
-      console.debug(...args);
-    }
-  },
-
-  /**
-   * Log info with context (dev only)
-   */
-  info: (message: string, context?: any) => {
-    if (isDev) {
-      console.info(`ℹ️ ${message}`, context || '');
-    }
-  },
-
-  /**
-   * Log success message (dev only)
-   */
-  success: (message: string, context?: any) => {
-    if (isDev) {
-      console.log(`✅ ${message}`, context || '');
-    }
-  },
-
-  /**
-   * Log API calls (dev only, breadcrumb in production)
-   */
-  api: (method: string, endpoint: string, data?: any) => {
-    if (isDev) {
-      console.log(`🌐 API ${method} ${endpoint}`, data || '');
-    } else {
-      // Add as breadcrumb for debugging in Sentry
-      addBreadcrumb(`API ${method} ${endpoint}`, 'http', 'info', { data });
-    }
-  },
-
-  /**
-   * Log navigation events (dev only)
-   */
-  navigation: (screen: string, params?: any) => {
-    if (isDev) {
-      console.log(`📱 Navigation → ${screen}`, params || '');
-    }
-  },
-};
-
-/**
- * Performance logger for measuring execution time
- */
-export class PerformanceLogger {
-  private startTime: number;
-  private label: string;
-
-  constructor(label: string) {
-    this.label = label;
-    this.startTime = Date.now();
-    if (isDev) {
-      console.time(label);
-    }
-  }
-
-  /**
-   * End performance measurement and log result
-   */
-  end() {
-    if (isDev) {
-      console.timeEnd(this.label);
-      const duration = Date.now() - this.startTime;
-      console.log(`⏱️ ${this.label} took ${duration}ms`);
-    }
-  }
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
 }
 
-/**
- * Create a performance logger
- * @param label - Label for the performance measurement
- * @returns PerformanceLogger instance
- */
-export const performanceLog = (label: string): PerformanceLogger => {
-  return new PerformanceLogger(label);
+interface LogConfig {
+  level: LogLevel;
+  enableInProduction: boolean;
+  maxLogLength: number;
+}
+
+const defaultConfig: LogConfig = {
+  level: __DEV__ ? LogLevel.DEBUG : LogLevel.ERROR,
+  enableInProduction: false,
+  maxLogLength: 200,
 };
 
+class Logger {
+  private config: LogConfig;
+
+  constructor(config: LogConfig = defaultConfig) {
+    this.config = config;
+  }
+
+  private shouldLog(level: LogLevel): boolean {
+    if (!__DEV__ && !this.config.enableInProduction) {
+      return level >= LogLevel.ERROR;
+    }
+    return level >= this.config.level;
+  }
+
+  private formatMessage(message: string, data?: any): string {
+    let formattedMessage = message;
+    
+    if (data) {
+      const dataStr = typeof data === 'object' ? JSON.stringify(data) : String(data);
+      formattedMessage += ` ${dataStr}`;
+    }
+
+    // Production'da log uzunluğunu sınırla
+    if (!__DEV__ && formattedMessage.length > this.config.maxLogLength) {
+      formattedMessage = formattedMessage.substring(0, this.config.maxLogLength) + '...';
+    }
+
+    return formattedMessage;
+  }
+
+  debug(message: string, data?: any): void {
+    if (this.shouldLog(LogLevel.DEBUG)) {
+      console.log(`🔍 ${this.formatMessage(message, data)}`);
+    }
+  }
+
+  info(message: string, data?: any): void {
+    if (this.shouldLog(LogLevel.INFO)) {
+      console.log(`ℹ️ ${this.formatMessage(message, data)}`);
+    }
+  }
+
+  warn(message: string, data?: any): void {
+    if (this.shouldLog(LogLevel.WARN)) {
+      console.warn(`⚠️ ${this.formatMessage(message, data)}`);
+    }
+  }
+
+  error(message: string, data?: any): void {
+    if (this.shouldLog(LogLevel.ERROR)) {
+      console.error(`❌ ${this.formatMessage(message, data)}`);
+    }
+  }
+
+  // Özel kategoriler için logger'lar
+  auth = {
+    debug: (message: string, data?: any) => this.debug(`[AUTH] ${message}`, data),
+    info: (message: string, data?: any) => this.info(`[AUTH] ${message}`, data),
+    warn: (message: string, data?: any) => this.warn(`[AUTH] ${message}`, data),
+    error: (message: string, data?: any) => this.error(`[AUTH] ${message}`, data),
+  };
+
+  api = {
+    debug: (message: string, data?: any) => this.debug(`[API] ${message}`, data),
+    info: (message: string, data?: any) => this.info(`[API] ${message}`, data),
+    warn: (message: string, data?: any) => this.warn(`[API] ${message}`, data),
+    error: (message: string, data?: any) => this.error(`[API] ${message}`, data),
+  };
+
+  storage = {
+    debug: (message: string, data?: any) => this.debug(`[STORAGE] ${message}`, data),
+    info: (message: string, data?: any) => this.info(`[STORAGE] ${message}`, data),
+    warn: (message: string, data?: any) => this.warn(`[STORAGE] ${message}`, data),
+    error: (message: string, data?: any) => this.error(`[STORAGE] ${message}`, data),
+  };
+
+  network = {
+    debug: (message: string, data?: any) => this.debug(`[NETWORK] ${message}`, data),
+    info: (message: string, data?: any) => this.info(`[NETWORK] ${message}`, data),
+    warn: (message: string, data?: any) => this.warn(`[NETWORK] ${message}`, data),
+    error: (message: string, data?: any) => this.error(`[NETWORK] ${message}`, data),
+  };
+}
+
+// Singleton instance
+export const logger = new Logger();
+
+// Convenience exports
+export const { debug, info, warn, error } = logger;
+export const { auth, api, storage, network } = logger;

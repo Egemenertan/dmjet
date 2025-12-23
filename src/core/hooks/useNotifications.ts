@@ -31,30 +31,20 @@ export const useNotifications = () => {
    * Push notification sistemini başlat
    */
   const initializePushNotifications = async () => {
-    if (!user?.id) {
-      console.log('⚠️ Push notification: Kullanıcı yok');
-      return;
-    }
+    if (!user?.id) return;
 
     try {
-      console.log('🔔 Push notification başlatılıyor...');
-      
       // Push token al
       const token = await notificationService.registerForPushNotifications();
       
       if (token) {
-        console.log('✅ Push token alındı:', token.substring(0, 30) + '...');
         setExpoPushToken(token);
         
         // Token'ı veritabanına kaydet
         const saved = await notificationService.savePushToken(user.id, token);
-        if (saved) {
-          console.log('✅ Push token veritabanına kaydedildi!');
-        } else {
+        if (!saved) {
           console.error('❌ Push token kaydedilemedi');
         }
-      } else {
-        console.warn('⚠️ Push token alınamadı (fiziksel cihaz gerekli)');
       }
     } catch (error) {
       console.error('❌ Push notification hatası:', error);
@@ -140,7 +130,6 @@ export const useNotifications = () => {
     // Uygulama açıkken gelen bildirimler için listener
     notificationListener.current = notificationService.addNotificationReceivedListener(
       (notification) => {
-        console.log('Notification received:', notification);
         // Yeni bildirim geldiğinde listeyi yenile
         loadNotifications();
       }
@@ -149,7 +138,6 @@ export const useNotifications = () => {
     // Bildirime tıklandığında
     responseListener.current = notificationService.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('Notification response:', response);
         const notificationData = response.notification.request.content.data;
         
         // Bildirim data'sına göre yönlendirme yapılabilir

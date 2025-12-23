@@ -13,12 +13,14 @@ const CARD_HEIGHT = 180;
 
 interface BannerCardProps {
   id: string;
-  image_url: string;
+  image_url?: string;
+  image_source?: any; // Local asset için
   onPress?: () => void;
 }
 
 export const BannerCard: React.FC<BannerCardProps> = ({
   image_url,
+  image_source,
   onPress,
 }) => {
   return (
@@ -28,7 +30,7 @@ export const BannerCard: React.FC<BannerCardProps> = ({
       activeOpacity={0.9}>
       <View style={styles.imageContainer}>
         <Image
-          source={{uri: image_url}}
+          source={image_source || {uri: image_url}}
           style={styles.image}
           resizeMode="cover"
         />
@@ -72,6 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
 });
+
 
 
 

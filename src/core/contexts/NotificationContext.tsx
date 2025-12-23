@@ -36,17 +36,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, [user?.id]);
 
   // Otomatik notification işlemeyi başlat
-  // NOT: Edge function mevcut olmadığı için şimdilik devre dışı
-  // useEffect(() => {
-  //   // Uygulama açıldığında notification processor'ı başlat
-  //   // Her 30 saniyede bir pending bildirimleri kontrol eder
-  //   notificationProcessor.startAutoProcessing(30000);
+  useEffect(() => {
+    if (user?.id) {
+      // Uygulama açıldığında notification processor'ı başlat
+      // Her 1 saniyede bir pending bildirimleri kontrol eder (anlık bildirim için)
+      notificationProcessor.startAutoProcessing(1000);
 
-  //   // Cleanup: Component unmount olduğunda durdur
-  //   return () => {
-  //     notificationProcessor.stopAutoProcessing();
-  //   };
-  // }, []);
+      // Cleanup: Component unmount olduğunda durdur
+      return () => {
+        notificationProcessor.stopAutoProcessing();
+      };
+    }
+  }, [user?.id]);
 
   return (
     <NotificationContext.Provider value={notificationHook}>

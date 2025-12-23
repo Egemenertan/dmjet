@@ -151,7 +151,8 @@ export const searchService = {
           subcategory_id,
           created_at
         `, {count: 'exact'})
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('balance', 1);
       
       // Ürün adı, kategori veya alt kategori ile eşleşenleri getir
       if (allCategoryIds.length > 0 || subcategoryIds.length > 0) {
@@ -209,7 +210,8 @@ export const searchService = {
         subcategory_id,
         created_at
       `, {count: 'exact'})
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .gt('balance', 1);
 
     // Arama terimi varsa ekle (sanitize edilmiş)
     if (query && query.trim()) {

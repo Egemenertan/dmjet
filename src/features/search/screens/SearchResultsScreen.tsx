@@ -23,6 +23,7 @@ import {ProductCard} from '@features/products/components';
 import {productsService} from '@features/products/services/productsService';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
+import {LogoLoader} from '@shared/components';
 import {useTranslation} from '@localization';
 import {ModernBottomBar} from '@shared/components';
 
@@ -228,10 +229,7 @@ export const SearchResultsScreen: React.FC = () => {
         {/* Ürünler Listesi */}
         <View style={styles.productsContainer}>
         {productsLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Ürünler aranıyor...</Text>
-          </View>
+          <LogoLoader text="Ürünler aranıyor..." />
         ) : products && products.length > 0 ? (
           <FlatList
             data={products}

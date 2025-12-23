@@ -24,17 +24,24 @@ import {
   ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import MapView, {Region, PROVIDER_GOOGLE} from 'react-native-maps';
+import MapView, {Region, PROVIDER_GOOGLE, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import {useNavigation} from '@react-navigation/native';
 import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {Button} from '@shared/ui';
 import {useAuthStore} from '@store/slices/authStore';
 import {supabase} from '@core/services/supabase';
+import {profileService} from '../services/profileService';
 import {AddressSearchInput} from '@shared/components/AddressSearchInput';
 import {NavArrowDown} from 'iconoir-react-native';
 import {useTranslation} from '@localization';
 import {CountryCodePicker} from '@shared/components/CountryCodePicker';
+import {
+  DELIVERY_AREA_POLYGON,
+  isInDeliveryArea,
+  getDeliveryAreaRegion,
+  Coordinate,
+} from '@core/utils/polygon';
 
 interface LocationData {
   latitude: number;
@@ -60,13 +67,16 @@ const NORTH_CYPRUS_CENTER = {
   longitudeDelta: 0.3,
 };
 
+// Teslimat alanı merkez koordinatları
+const DELIVERY_AREA_CENTER = getDeliveryAreaRegion();
+
 export const MapSelectionScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
-  const {user, isAuthenticated} = useAuthStore();
+  const {user, isAuthenticated, profile, setProfile} = useAuthStore();
   const mapRef = useRef<MapView>(null);
 
-  const [region, setRegion] = useState<Region>(NORTH_CYPRUS_CENTER);
+  const [region, setRegion] = useState<Region>(DELIVERY_AREA_CENTER);
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,6 +87,25 @@ export const MapSelectionScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+90');
   const [userHasPhone, setUserHasPhone] = useState(false);
+  const [isLocationInDeliveryArea, setIsLocationInDeliveryArea] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
+
+  // Profile'dan telefon bilgisini yükle
+  useEffect(() => {
+    if (profile?.phone) {
+      console.log('📞 Map Selection - Profile\'dan telefon yükleniyor:', {
+        phone: profile.phone,
+        country_code: profile.country_code
+      });
+      setPhoneNumber(profile.phone);
+      setCountryCode(profile.country_code || '+90');
+      setUserHasPhone(true);
+    } else {
+      console.log('📞 Map Selection - Profile\'da telefon yok');
+      setPhoneNumber('');
+      setCountryCode('+90');
+      setUserHasPhone(false);
+    }
+  }, [profile]);
 
   // Kullanıcının kayıtlı konumunu yükle ve ardından GPS konumunu al
   useEffect(() => {
@@ -123,10 +152,10 @@ export const MapSelectionScreen: React.FC = () => {
         return false; // Kayıtlı konum yok
       }
 
-      // Kullanıcının kayıtlı konumunu ve telefon bilgisini al
+      // Kullanıcının kayıtlı konumunu al
       const {data, error} = await supabase
         .from('profiles')
-        .select('location_lat, location_lng, address, address_details, phone, country_code')
+        .select('location_lat, location_lng, address, address_details')
         .eq('id', user.id)
         .single();
 
@@ -136,13 +165,6 @@ export const MapSelectionScreen: React.FC = () => {
       }
 
       if (data) {
-        // Telefon bilgisi var mı kontrol et
-        if (data.phone) {
-          setUserHasPhone(true);
-          setPhoneNumber(data.phone);
-          setCountryCode(data.country_code || '+90');
-        }
-
         // Kayıtlı konum varsa onu kullan
         if (data.location_lat && data.location_lng) {
           const savedLocation = {
@@ -152,13 +174,24 @@ export const MapSelectionScreen: React.FC = () => {
             longitudeDelta: 0.01,
           };
           setRegion(savedLocation);
-          setSelectedLocation({
+          const locationData = {
             latitude: data.location_lat,
             longitude: data.location_lng,
             address: data.address || undefined,
-          });
+          };
+          setSelectedLocation(locationData);
           setSearchQuery(data.address || '');
           setAddressDetails(data.address_details || '');
+          
+          // Kayıtlı konum için hemen hizmet alanı kontrolü yap
+          const inDeliveryArea = isInDeliveryArea(locationData);
+          console.log('📍 Kayıtlı konum - teslimat alanı kontrolü:', {
+            locationData,
+            inDeliveryArea,
+            previousState: isLocationInDeliveryArea
+          });
+          setIsLocationInDeliveryArea(inDeliveryArea);
+          
           return true; // Kayıtlı konum var
         } else {
           // Konum yoksa GPS konumu alınacak
@@ -228,15 +261,28 @@ export const MapSelectionScreen: React.FC = () => {
 
       if (isInNorthCyprus) {
         setRegion(userLocation);
-        setSelectedLocation({
+        const locationData = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-        });
+        };
+        setSelectedLocation(locationData);
 
         // Manuel kullanımda haritayı animate et
         if (isManual && mapRef.current) {
           mapRef.current.animateToRegion(userLocation, 1000);
         }
+        
+        // GPS konumu için hizmet alanı kontrolü
+        setTimeout(() => {
+          const inDeliveryArea = isInDeliveryArea(locationData);
+          console.log('📍 GPS konumu - teslimat alanı kontrolü:', {
+            locationData,
+            inDeliveryArea,
+            isManual,
+            previousState: isLocationInDeliveryArea
+          });
+          setIsLocationInDeliveryArea(inDeliveryArea);
+        }, isManual ? 1100 : 300); // Manuel ise animasyon süresini bekle
         
         console.log('✅ GPS konumu başarıyla alındı:', userLocation);
       } else {
@@ -267,10 +313,23 @@ export const MapSelectionScreen: React.FC = () => {
   // Harita hareket ettiğinde merkez konumu güncelle
   const handleRegionChangeComplete = (newRegion: Region) => {
     setRegion(newRegion);
-    setSelectedLocation({
+    const newLocation = {
       latitude: newRegion.latitude,
       longitude: newRegion.longitude,
-    });
+    };
+    
+    // Teslimat alanı kontrolü - debounce ile gecikme ekle
+    setTimeout(() => {
+      const inDeliveryArea = isInDeliveryArea(newLocation);
+      console.log('📍 Harita hareket - teslimat alanı kontrolü:', {
+        location: newLocation,
+        inDeliveryArea,
+        previousState: isLocationInDeliveryArea
+      });
+      setIsLocationInDeliveryArea(inDeliveryArea);
+    }, 300); // 300ms gecikme ile kontrol et
+    
+    setSelectedLocation(newLocation);
   };
 
   // Adres seçildiğinde
@@ -290,6 +349,17 @@ export const MapSelectionScreen: React.FC = () => {
 
     // Haritayı seçilen konuma taşı
     mapRef.current?.animateToRegion(newRegion, 500);
+    
+    // Teslimat alanı kontrolü - harita animasyonu bittikten sonra
+    setTimeout(() => {
+      const inDeliveryArea = isInDeliveryArea(location);
+      console.log('📍 Adres seçimi - teslimat alanı kontrolü:', {
+        location,
+        inDeliveryArea,
+        previousState: isLocationInDeliveryArea
+      });
+      setIsLocationInDeliveryArea(inDeliveryArea);
+    }, 600); // Animasyon süresi + 100ms
   };
 
   // Konum onaylama
@@ -363,8 +433,16 @@ export const MapSelectionScreen: React.FC = () => {
 
       // Telefon bilgisini her zaman güncelle (eğer değişmişse)
       if (phoneNumber.trim()) {
-        updateData.phone = phoneNumber.trim();
+        // Telefon numarasını temizle - sadece rakamları al
+        const cleanPhone = phoneNumber.trim().replace(/\D/g, '');
+        updateData.phone = cleanPhone;
         updateData.country_code = countryCode;
+        
+        console.log('📞 Telefon numarası kaydediliyor:', {
+          original: phoneNumber,
+          cleaned: cleanPhone,
+          countryCode: countryCode
+        });
       }
 
       const {error} = await supabase
@@ -384,6 +462,17 @@ export const MapSelectionScreen: React.FC = () => {
         addressDetails: addressDetails,
         phone: phoneNumber
       });
+
+      // AuthStore'u güncelle
+      try {
+        const updatedProfile = await profileService.getProfile(user.id);
+        if (updatedProfile) {
+          setProfile(updatedProfile);
+          console.log('✅ Map Selection - Auth store profile updated');
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing profile in auth store:', error);
+      }
 
       Alert.alert(
         '✅ Başarılı',
@@ -511,14 +600,24 @@ export const MapSelectionScreen: React.FC = () => {
                     loadingEnabled={true}
                     loadingIndicatorColor={colors.primary}
                     loadingBackgroundColor={colors.background}
-                  />
+                  >
+                    {/* Teslimat Alanı Polygon */}
+                    <Polygon
+                      coordinates={DELIVERY_AREA_POLYGON}
+                      fillColor="rgba(0, 122, 255, 0.15)"
+                      strokeColor="rgba(0, 122, 255, 0.8)"
+                      strokeWidth={2}
+                    />
+                  </MapView>
                   
-                  {/* Fixed Center Pin - Yuvarlak */}
+                  {/* Fixed Center Pin - Google Maps Tarzı */}
                   <View style={styles.centerMarker} pointerEvents="none">
-                    <View style={styles.roundPin}>
-                      <View style={styles.roundPinInner} />
+                    <View style={styles.googlePin}>
+                      <View style={styles.googlePinHead}>
+                        <View style={styles.googlePinDot} />
+                      </View>
+                      <View style={styles.googlePinTail} />
                     </View>
-                    <View style={styles.roundPinShadow} />
                   </View>
                 </>
               )}
@@ -535,13 +634,23 @@ export const MapSelectionScreen: React.FC = () => {
               </View>
             )}
 
+            {/* Teslimat Alanı Uyarısı - sadece kontrol tamamlandığında göster */}
+            {isAuthenticated && selectedLocation && isLocationInDeliveryArea === false && (
+              <View style={styles.deliveryWarningContainer}>
+                <Text style={styles.deliveryWarningTitle}>⚠️ Teslimat Alanı Dışında</Text>
+                <Text style={styles.deliveryWarningText}>
+                  Seçtiğiniz konum teslimat alanımız dışında kalmaktadır. Lütfen mavi alan içerisinden bir konum seçiniz.
+                </Text>
+              </View>
+            )}
+
             {/* Confirm Location Button */}
             {isAuthenticated && (
               <View style={styles.bottomContainer}>
                 <Button
                   title={t('checkout.confirmLocation')}
                   onPress={handleConfirmLocation}
-                  disabled={!selectedLocation}
+                  disabled={!selectedLocation || isLocationInDeliveryArea === false}
                   fullWidth
                   rounded
                   size="lg"
@@ -592,8 +701,12 @@ export const MapSelectionScreen: React.FC = () => {
                   </Text>
                   <View style={styles.phoneInputContainer}>
                     <CountryCodePicker
-                      value={countryCode}
-                      onChange={setCountryCode}
+                      selectedCode={countryCode}
+                      onSelect={(code) => {
+                        console.log('🌍 Map Selection - Ülke kodu değişti:', code);
+                        setCountryCode(code);
+                      }}
+                      disabled={saving}
                     />
                     <TextInput
                       style={styles.phoneInput}
@@ -763,44 +876,55 @@ const styles = StyleSheet.create({
     top: '50%',
     left: '50%',
     marginLeft: -20,
-    marginTop: -20,
+    marginTop: -25, // Pin'i merkeze hizala
     alignItems: 'center',
     justifyContent: 'center',
   },
   // Yuvarlak Pin Styles
-  roundPin: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  googlePin: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    height: 50,
+  },
+  googlePinHead: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#fff',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: 3},
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
     }),
   },
-  roundPinInner: {
+  googlePinDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#fff',
   },
-  roundPinShadow: {
-    width: 24,
-    height: 6,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 12,
-    marginTop: 6,
+  googlePinTail: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: colors.primary,
+    marginTop: -3,
   },
   addressContainer: {
     backgroundColor: '#fff',
@@ -999,6 +1123,26 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,
+  },
+  deliveryWarningContainer: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  deliveryWarningTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+    color: '#856404',
+    marginBottom: spacing.xs,
+  },
+  deliveryWarningText: {
+    fontSize: fontSize.sm,
+    color: '#856404',
+    lineHeight: 20,
   },
 });
 

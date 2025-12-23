@@ -10,4 +10,5 @@ export {CountryCodePicker} from './CountryCodePicker';
 export {ErrorBoundary} from './ErrorBoundary';
 export {QueryErrorBoundary} from './QueryErrorBoundary';
 export {OptimizedImage} from './OptimizedImage';
+export {LogoLoader} from './LogoLoader';
 

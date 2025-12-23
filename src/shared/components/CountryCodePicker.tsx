@@ -42,6 +42,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
   );
 
   const handleSelect = (country: CountryCode) => {
+    console.log('🌍 Ülke seçildi:', country);
     onSelect(country.dialCode);
     setModalVisible(false);
     setSearchQuery('');
@@ -71,7 +72,12 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
     <View>
       <TouchableOpacity
         style={[styles.pickerButton, disabled && styles.pickerButtonDisabled]}
-        onPress={() => !disabled && setModalVisible(true)}
+        onPress={() => {
+          console.log('🌍 CountryCodePicker tıklandı, disabled:', disabled);
+          if (!disabled) {
+            setModalVisible(true);
+          }
+        }}
         activeOpacity={0.7}
         disabled={disabled}
       >

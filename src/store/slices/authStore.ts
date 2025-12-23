@@ -5,6 +5,7 @@
 
 import {create} from 'zustand';
 import {User, Session} from '@supabase/supabase-js';
+import {auth} from '@core/utils';
 
 export interface ProfileData {
   id: string;
@@ -53,7 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   canAccessAdminOrders: false,
   isLoading: true,
   setUser: (user) => {
-    console.log('👤 Auth Store - User Set:', {
+    auth.debug('User Set', {
       hasUser: !!user,
       userId: user?.id,
       email: user?.email
@@ -65,7 +66,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
   setSession: (session) => {
-    console.log('🔐 Auth Store - Session Set:', {
+    auth.debug('Session Set', {
       hasSession: !!session,
       hasUser: !!session?.user,
       userId: session?.user?.id,
@@ -79,26 +80,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
   setProfile: (profile) => {
-    // Sadece role değerine göre kontrol yap - is_admin'i ignore et
+    // Güvenli role kontrolü
     const isAdmin = profile?.role === 'admin';
     const isCourier = profile?.role === 'courier';
     const isPicker = profile?.role === 'picker';
     
-    // canAccessAdminOrders: SADECE admin, courier veya picker ise true
-    // role === 'user' ise kesinlikle false olmalı
-    const canAccessAdminOrders = profile ? (isAdmin || isCourier || isPicker) : false;
+    // GÜVENLIK: Sadece picker ve courier admin orders'a erişebilir
+    // Admin bile normal user orders sayfasını görsün (güvenlik için)
+    const canAccessAdminOrders = profile ? (isCourier || isPicker) : false;
     
-    console.log('👤 Auth Store - Profile Set:', {
+    auth.debug('Profile Set', {
       hasProfile: !!profile,
       role: profile?.role,
       fullName: profile?.full_name,
-      phone: profile?.phone,
-      address: profile?.address,
       hasLocation: !!(profile?.location_lat && profile?.location_lng),
-      isAdmin,
-      isCourier,
-      isPicker,
-      canAccessAdminOrders,
+      canAccessAdminOrders
     });
     
     set({
@@ -110,7 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
   setLoading: (loading) => {
-    console.log('⏳ Auth Store - Loading Set:', loading);
+    auth.debug('Loading Set', loading);
     set({isLoading: loading});
   },
   logout: () => {

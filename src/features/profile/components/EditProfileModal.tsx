@@ -87,6 +87,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
     try {
       setSaving(true);
+      
+      console.log('📞 Profil güncelleme - telefon bilgileri:', {
+        original: phone,
+        cleaned: cleanPhone,
+        countryCode: countryCode
+      });
+      
       await profileService.updateProfile(userId, {
         full_name: fullName.trim(),
         phone: cleanPhone,
@@ -191,7 +198,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 <View style={styles.phoneInputContainer}>
                   <CountryCodePicker
                     selectedCode={countryCode}
-                    onSelect={setCountryCode}
+                    onSelect={(code) => {
+                      console.log('🌍 EditProfileModal - Ülke kodu değişti:', code);
+                      setCountryCode(code);
+                    }}
                     disabled={saving}
                   />
                   <View style={styles.phoneInputWrapper}>

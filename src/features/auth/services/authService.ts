@@ -6,6 +6,7 @@
 import {supabase} from '@core/services/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import {makeRedirectUri} from 'expo-auth-session';
+import {auth} from '@core/utils';
 
 // Complete the auth session for web browser
 WebBrowser.maybeCompleteAuthSession();
@@ -37,7 +38,7 @@ export const authService = {
    * Login with Google OAuth
    */
   async loginWithGoogle() {
-    console.log('🚀 Starting Google OAuth...');
+    auth.debug('Starting Google OAuth...');
 
     // Cleanup any existing sessions
     try {
@@ -47,7 +48,7 @@ export const authService = {
     }
 
     const redirectUrl = 'dmarjetmobile://google-auth';
-    console.log('🔗 Redirect URL:', redirectUrl);
+    auth.debug('Redirect URL:', redirectUrl);
 
     const {data, error} = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -63,11 +64,11 @@ export const authService = {
     });
 
     if (error || !data?.url) {
-      console.error('❌ OAuth URL hatası:', error?.message);
+      auth.error('OAuth URL hatası:', error?.message);
       throw new Error('Google OAuth bağlantısı kurulamadı');
     }
 
-    console.log('🌐 Opening OAuth browser...');
+    auth.debug('Opening OAuth browser...');
 
     // Open browser with timeout
     const browserResult = await Promise.race([
@@ -77,25 +78,25 @@ export const authService = {
       }),
     ]);
 
-    console.log('📱 Browser result:', browserResult.type);
+    auth.debug('Browser result:', browserResult.type);
 
     // Handle cancel
     if (browserResult.type === 'cancel') {
-      console.log('ℹ️ Kullanıcı iptal etti');
+      auth.info('Kullanıcı iptal etti');
       throw new Error('Google giriş iptal edildi');
     }
 
     // Check success
     if (browserResult.type !== 'success' || !browserResult.url) {
-      console.error('❌ Browser session başarısız:', browserResult.type);
+      auth.error('Browser session başarısız:', browserResult.type);
       throw new Error('OAuth akışı tamamlanamadı');
     }
 
-    console.log('✅ Browser OAuth başarılı, URL processing...');
+    auth.debug('Browser OAuth başarılı, URL processing...');
 
     try {
       // Log the full URL for debugging
-      console.log('🔍 Processing OAuth URL:', browserResult.url.substring(0, 100) + '...');
+      auth.debug('Processing OAuth URL:', browserResult.url.substring(0, 100) + '...');
       
       const url = new URL(browserResult.url);
       let params: URLSearchParams;
@@ -105,7 +106,7 @@ export const authService = {
       // Try fragment first (after #)
       const fragment = url.hash.substring(1);
       if (fragment) {
-        console.log('📍 Found URL fragment, parsing...');
+        auth.debug('Found URL fragment, parsing...');
         params = new URLSearchParams(fragment);
         access_token = params.get('access_token');
         refresh_token = params.get('refresh_token');
@@ -113,7 +114,7 @@ export const authService = {
 
       // If no tokens in fragment, try query parameters (after ?)
       if (!access_token || !refresh_token) {
-        console.log('📍 No tokens in fragment, trying query parameters...');
+        auth.debug('No tokens in fragment, trying query parameters...');
         params = new URLSearchParams(url.search);
         access_token = params.get('access_token');
         refresh_token = params.get('refresh_token');
@@ -123,31 +124,29 @@ export const authService = {
       if (!access_token && !refresh_token) {
         const code = params.get('code');
         if (code) {
-          console.log('📍 Found authorization code, exchanging for tokens...');
+          auth.debug('Found authorization code, exchanging for tokens...');
           // Let Supabase handle the code exchange
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            console.error('❌ Code exchange error:', error);
+            auth.error('Code exchange error:', error);
             throw new Error(`Code exchange failed: ${error.message}`);
           }
           if (data.session) {
-            console.log('✅ OAuth successful via code exchange!');
+            auth.info('OAuth successful via code exchange!');
             return data;
           }
         }
       }
 
       if (!access_token || !refresh_token) {
-        console.error('❌ No tokens found in URL:', {
+        auth.error('No tokens found in URL:', {
           hasFragment: !!fragment,
-          hasQuery: !!url.search,
-          fragmentParams: fragment ? Object.fromEntries(new URLSearchParams(fragment)) : null,
-          queryParams: url.search ? Object.fromEntries(new URLSearchParams(url.search)) : null
+          hasQuery: !!url.search
         });
         throw new Error('OAuth tokens not found in response URL');
       }
 
-      console.log('🔐 Tokenlar alındı, session kuruluyor...');
+      auth.debug('Tokenlar alındı, session kuruluyor...');
 
       // Set the session with extracted tokens
       const {data: sessionData, error: sessionError} =
@@ -157,23 +156,23 @@ export const authService = {
         });
 
       if (sessionError) {
-        console.error('❌ Session kurulum hatası:', sessionError.message);
+        auth.error('Session kurulum hatası:', sessionError.message);
         throw new Error(`Session kurulumu başarısız: ${sessionError.message}`);
       }
 
       if (!sessionData.session?.user) {
-        console.error('❌ Session kuruldu ama user bilgisi yok');
+        auth.error('Session kuruldu ama user bilgisi yok');
         throw new Error('Kullanıcı bilgileri alınamadı');
       }
 
-      console.log('✅ OAuth başarılı! User:', sessionData.session.user.email);
+      auth.info('OAuth başarılı! User:', sessionData.session.user.email);
       
       // Wait a bit for the auth state to propagate
       await new Promise(resolve => setTimeout(resolve, 500));
       
       return sessionData;
     } catch (urlError: any) {
-      console.error('❌ URL processing hatası:', urlError);
+      auth.error('URL processing hatası:', urlError);
       throw new Error('OAuth response işlenemedi');
     }
   },

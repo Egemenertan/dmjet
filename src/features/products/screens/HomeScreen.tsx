@@ -13,7 +13,7 @@ import {User} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '../services/productsService';
 import {ProductCard, CategoriesSection} from '../components';
-import {BannerCarousel, QueryErrorBoundary} from '@shared/components';
+import {BannerCarousel, QueryErrorBoundary, LogoLoader} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useAuthStore} from '@store/slices/authStore';
@@ -70,37 +70,18 @@ export const HomeScreen: React.FC = () => {
     // You can add navigation or other actions here in the future
   };
 
-  // Demo banner verileri - gerçek uygulamada Supabase'den çekilecek
+  // Banner verisi - assets/banner.png kullanılıyor
   const demoBanners = [
     {
       id: '1',
-      image_url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80',
-    },
-    {
-      id: '2',
-      image_url: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=800&q=80',
-    },
-    {
-      id: '3',
-      image_url: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80',
-    },
-    {
-      id: '4',
-      image_url: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
-    },
-    {
-      id: '5',
-      image_url: 'https://images.unsplash.com/photo-1601599561213-832382fd07ba?w=800&q=80',
+      image_source: require('../../../../assets/banner.png'),
     },
   ];
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
+        <LogoLoader />
       </SafeAreaView>
     );
   }
@@ -176,11 +157,11 @@ export const HomeScreen: React.FC = () => {
         {/* Kategoriler Section - Yatay Scroll */}
         <CategoriesSection onCategoryPress={handleCategoryPress} />
 
-        {/* Banner Carousel - Otomatik Scroll */}
+        {/* Banner - Tek banner gösterimi */}
         <BannerCarousel 
           banners={demoBanners} 
           onBannerPress={handleBannerPress}
-          autoScroll={true}
+          autoScroll={false}
         />
 
         {/* Featured Products */}

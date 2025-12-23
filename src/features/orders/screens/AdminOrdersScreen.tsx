@@ -27,6 +27,7 @@ import {Package, Pin, CreditCard, Cash, User, Phone, MapPin, NavArrowDown, Check
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
+import {RoleGuard} from '@core/components/RoleGuard';
 import {
   adminOrdersService,
   AdminOrder,
@@ -64,7 +65,7 @@ const getStatusConfig = (t: any) => ({
 
 const PAGE_SIZE = 20; // Her seferinde 20 sipariş yükle
 
-export const AdminOrdersScreen: React.FC = () => {
+const AdminOrdersScreenContent: React.FC = () => {
   const {t} = useTranslation();
   const {canAccessAdminOrders, profile, isPicker} = useAuthStore();
 
@@ -90,23 +91,7 @@ export const AdminOrdersScreen: React.FC = () => {
 
   const statusConfig = getStatusConfig(t);
 
-  // GÜVENLİK KONTROLÜ: Eğer kullanıcı admin/courier/picker değilse bu ekranı gösterme
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'courier' && profile.role !== 'picker')) {
-    console.error('🚫 AdminOrdersScreen: Yetkisiz erişim engellendi!', {
-      role: profile?.role,
-      canAccessAdminOrders,
-    });
-    
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.unauthorizedContainer}>
-          <Package width={80} height={80} color={colors.error} strokeWidth={2} />
-          <Text style={styles.unauthorizedTitle}>{t('admin.unauthorized')}</Text>
-          <Text style={styles.unauthorizedText}>{t('admin.unauthorizedMessage')}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Güvenlik kontrolü artık RoleGuard tarafından yapılıyor
 
   // Filter orders based on active tab
   const orders = allOrders.filter(order => {
@@ -837,52 +822,7 @@ export const AdminOrdersScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Order Info */}
-                <View style={styles.orderInfo}>
-                  <View style={styles.orderHeader}>
-                    <Text style={styles.orderNumber}>
-                      {t('orders.orderPrefix')}
-                      {order.id.slice(0, 8).toUpperCase()}
-                    </Text>
-                    <Text style={styles.orderDate}>
-                      {formatDate(order.created_at)}
-                    </Text>
-                  </View>
-
-                  {/* Customer Info */}
-                  <View style={styles.customerSection}>
-                    <View style={styles.customerRow}>
-                      <User
-                        width={16}
-                        height={16}
-                        color={colors.text.secondary}
-                        strokeWidth={2}
-                      />
-                      <Text style={styles.customerText}>
-                        {order.customer_name || order.user_email}
-                      </Text>
-                    </View>
-                    {order.customer_phone && (
-                      <TouchableOpacity
-                        style={styles.phoneButton}
-                        onPress={() => {
-                          const phoneNumber = `${order.customer_country_code || '+90'}${order.customer_phone}`;
-                          Linking.openURL(`tel:${phoneNumber}`);
-                        }}
-                        activeOpacity={0.7}>
-                        <Phone
-                          width={18}
-                          height={18}
-                          color="#fff"
-                          strokeWidth={2.5}
-                        />
-                        <Text style={styles.phoneButtonText}>
-                          {order.customer_country_code || '+90'}{' '}
-                          {order.customer_phone}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                
 
                   {/* Address with Map Preview */}
                   {order.shipping_address?.address && (
@@ -979,7 +919,52 @@ export const AdminOrdersScreen: React.FC = () => {
                       </Text>
                     </View>
                   )}
+{/* Order Info */}
+<View style={styles.orderInfo}>
+                  <View style={styles.orderHeader}>
+                    <Text style={styles.orderNumber}>
+                      {t('orders.orderPrefix')}
+                      {order.id.slice(0, 8).toUpperCase()}
+                    </Text>
+                    <Text style={styles.orderDate}>
+                      {formatDate(order.created_at)}
+                    </Text>
+                  </View>
 
+                  {/* Customer Info */}
+                  <View style={styles.customerSection}>
+                    <View style={styles.customerRow}>
+                      <User
+                        width={16}
+                        height={16}
+                        color={colors.text.secondary}
+                        strokeWidth={2}
+                      />
+                      <Text style={styles.customerText}>
+                        {order.customer_name || order.user_email}
+                      </Text>
+                    </View>
+                    {order.customer_phone && (
+                      <TouchableOpacity
+                        style={styles.phoneButton}
+                        onPress={() => {
+                          const phoneNumber = `${order.customer_country_code || '+90'}${order.customer_phone}`;
+                          Linking.openURL(`tel:${phoneNumber}`);
+                        }}
+                        activeOpacity={0.7}>
+                        <Phone
+                          width={18}
+                          height={18}
+                          color="#fff"
+                          strokeWidth={2.5}
+                        />
+                        <Text style={styles.phoneButtonText}>
+                          {order.customer_country_code || '+90'}{' '}
+                          {order.customer_phone}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   {/* Delivery Note */}
                   {order.delivery_note && (
                     <View style={styles.noteContainer}>
@@ -1302,7 +1287,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     margin: spacing.sm,
     ...Platform.select({
       ios: {
@@ -1384,6 +1369,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
+    paddingLeft: spacing.sm,
   },
   orderDate: {
     fontSize: fontSize.sm,
@@ -1398,12 +1384,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    paddingLeft: spacing.sm,
   },
   customerText: {
     flex: 1,
     fontSize: fontSize.sm,
     color: colors.text.primary,
     fontWeight: fontWeight.medium,
+    
   },
   phoneButton: {
     flexDirection: 'row',
@@ -1411,10 +1399,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     backgroundColor: 'black',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xs
     ,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     marginTop: spacing.xs,
     ...Platform.select({
       ios: {
@@ -1574,11 +1562,13 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.text.secondary,
     marginBottom: spacing.sm,
+    paddingLeft: spacing.sm,
   },
   productsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    paddingLeft: spacing.sm,
   },
   productItem: {
     width: 70,
@@ -1647,6 +1637,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    paddingLeft: spacing.lg,
   },
   paymentLabel: {
     fontSize: fontSize.sm,
@@ -2005,4 +1996,16 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
 });
+
+// RoleGuard ile sarılmış güvenli AdminOrdersScreen
+export const AdminOrdersScreen: React.FC = () => {
+  return (
+    <RoleGuard 
+      allowedRoles={['picker', 'courier']}
+      fallbackMessage="Bu sayfa sadece picker ve courier rolündeki kullanıcılar için erişilebilir."
+    >
+      <AdminOrdersScreenContent />
+    </RoleGuard>
+  );
+};
 

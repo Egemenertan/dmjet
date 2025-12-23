@@ -6,7 +6,7 @@
 import {supabase} from '@core/services/supabase';
 import {Database} from '@core/types/database.types';
 import {sanitizeSearchQuery} from '@core/utils/sanitize';
-import {getCategoryImageUrl, getProductImageUrl} from '@core/utils';
+import {getCategoryImageUrl, getProductImageUrl, api} from '@core/utils';
 
 type Stock = Database['public']['Tables']['stocks']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -18,7 +18,7 @@ export const productsService = {
    */
   async getProducts(language: string = 'tr', limit: number = 20) {
     try {
-      console.log(`🛍️ Fetching products (language: ${language}, limit: ${limit})`);
+      api.debug(`Fetching products (language: ${language}, limit: ${limit})`);
       
       const {data, error} = await supabase
         .from('stocks')
@@ -34,24 +34,23 @@ export const productsService = {
           categories(id, name)
         `)
         .eq('is_active', true)
+        .gt('balance', 1)
         .limit(limit);
 
       if (error) {
-        console.error('❌ Products fetch error:', {
+        api.error('Products fetch error:', {
           code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
+          message: error.message
         });
         throw error;
       }
 
       if (!data) {
-        console.warn('⚠️ Products query returned null');
+        api.warn('Products query returned null');
         return [];
       }
 
-      console.log(`✅ Products fetched successfully: ${data.length} items`);
+      api.debug(`Products fetched successfully: ${data.length} items`);
       
       // stocks verisini products formatına dönüştür
       const products = data.map(stock => ({
@@ -70,22 +69,18 @@ export const productsService = {
 
       // Log sample product for debugging
       if (products.length > 0) {
-        console.log('📦 Sample product:', {
+        api.debug('Sample product:', {
           id: products[0].id,
           name: products[0].name,
-          price: products[0].price,
-          hasImage: !!products[0].image_url,
-          stock: products[0].stock
+          hasImage: !!products[0].image_url
         });
       }
 
       return products;
     } catch (error: any) {
-      console.error('❌ Products service error:', {
+      api.error('Products service error:', {
         message: error.message,
-        code: error.code,
-        language,
-        limit
+        code: error.code
       });
       
       // Return empty array instead of throwing to prevent app crash
@@ -112,6 +107,7 @@ export const productsService = {
       `)
       .eq('stock_id', parseInt(id))
       .eq('is_active', true)
+      .gt('balance', 1)
       .single();
 
     if (error) throw error;
@@ -308,7 +304,8 @@ export const productsService = {
         created_at
       `, {count: 'exact'})
       .eq('category_id', categoryId)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .gt('balance', 1);
 
     // Eğer subcategory seçiliyse filtrele
     if (subcategoryId) {

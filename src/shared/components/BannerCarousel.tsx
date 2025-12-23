@@ -21,7 +21,8 @@ const AUTO_SCROLL_INTERVAL = 4000; // 4 saniye
 
 interface Banner {
   id: string;
-  image_url: string;
+  image_url?: string;
+  image_source?: any; // Local asset için
   link?: string;
 }
 
@@ -116,6 +117,7 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
             key={banner.id}
             id={banner.id}
             image_url={banner.image_url}
+            image_source={banner.image_source}
             onPress={() => onBannerPress?.(banner)}
           />
         ))}
