@@ -54,25 +54,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   canAccessAdminOrders: false,
   isLoading: true,
   setUser: (user) => {
-    auth.debug('User Set', {
-      hasUser: !!user,
-      userId: user?.id,
-      email: user?.email
-    });
-    
+    // Debug log silindi - production'da gereksiz
     set({
       user,
       isAuthenticated: !!user,
     });
   },
   setSession: (session) => {
-    auth.debug('Session Set', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      email: session?.user?.email
-    });
-    
+    // Debug log silindi - production'da gereksiz
     set({
       session,
       user: session?.user || null,
@@ -89,13 +78,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Admin bile normal user orders sayfasını görsün (güvenlik için)
     const canAccessAdminOrders = profile ? (isCourier || isPicker) : false;
     
-    auth.debug('Profile Set', {
-      hasProfile: !!profile,
-      role: profile?.role,
-      fullName: profile?.full_name,
-      hasLocation: !!(profile?.location_lat && profile?.location_lng),
-      canAccessAdminOrders
-    });
+    // Debug log silindi - production'da gereksiz
     
     set({
       profile,
@@ -106,11 +89,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
   setLoading: (loading) => {
-    auth.debug('Loading Set', loading);
+    // Debug log silindi - production'da gereksiz
     set({isLoading: loading});
   },
   logout: () => {
-    console.log('👋 Auth Store - Logout');
+    // Debug log silindi - production'da gereksiz
     set({
       user: null,
       session: null,

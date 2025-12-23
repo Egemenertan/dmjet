@@ -3,6 +3,9 @@
  * Uses environment variables for sensitive data
  */
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 export default {
   expo: {
     name: "DmarJet Mobile",

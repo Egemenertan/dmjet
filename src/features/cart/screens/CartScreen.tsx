@@ -4,7 +4,7 @@
  */
 
 import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, FlatList, Image, TouchableOpacity} from 'react-native';
+import {View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {Ionicons} from '@expo/vector-icons';
@@ -13,16 +13,20 @@ import {Button} from '@shared/ui';
 import {useCartStore} from '@store/slices/cartStore';
 import {useTranslation} from '@localization';
 import {useTabNavigation} from '@core/navigation/TabContext';
-import {getDeliverySettings, meetsMinimumOrder, calculateDeliveryFee} from '../services/deliveryService';
+import {useWorkingHoursContext} from '@core/contexts/WorkingHoursContext';
+import {getDeliverySettings, meetsMinimumOrder, calculateDeliveryFee, meetsMinimumOrderExcludingCigarettes, calculateAmountExcludingCigarettes, calculateDeliveryFeeExcludingCigarettes} from '../services/deliveryService';
 import {DeliverySettings} from '../types';
+import {supabase} from '@core/services/supabase';
 
 export const CartScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {setActiveTab} = useTabNavigation();
   const {items, totalAmount, updateQuantity, removeItem} = useCartStore();
+  const {isWithinWorkingHours, isEnabled: workingHoursEnabled, message: workingHoursMessage} = useWorkingHoursContext();
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [checkingStock, setCheckingStock] = useState(false);
 
   useEffect(() => {
     fetchDeliverySettings();
@@ -40,16 +44,127 @@ export const CartScreen: React.FC = () => {
     }
   };
 
-  const handleCheckout = () => {
-    // Giriş kontrolü yapmadan direkt checkout sayfasına yönlendir
-    navigation.navigate('Checkout' as never);
+  const checkStockAvailability = async (): Promise<{
+    available: boolean; 
+    outOfStockItems: Array<{id: string; name: string; requested: number; available: number; type: 'out' | 'insufficient'}>
+  }> => {
+    try {
+      // Sepetteki ürünlerin stock_id'lerini al
+      const stockIds = items.map(item => parseInt(item.id));
+      
+      // Supabase'den güncel stok bilgilerini çek
+      const {data: stockData, error} = await supabase
+        .from('stocks')
+        .select('stock_id, name, balance')
+        .in('stock_id', stockIds);
+
+      if (error) {
+        console.error('Stok kontrolü hatası:', error);
+        throw error;
+      }
+
+      // Stokta olmayan veya yetersiz olan ürünleri bul
+      const outOfStockItems: Array<{
+        id: string; 
+        name: string; 
+        requested: number; 
+        available: number;
+        type: 'out' | 'insufficient'
+      }> = [];
+      
+      items.forEach(cartItem => {
+        const stockItem = stockData?.find(s => s.stock_id === parseInt(cartItem.id));
+        
+        // Eğer ürün bulunamadıysa veya balance 0 veya negatifse
+        if (!stockItem || stockItem.balance <= 0) {
+          outOfStockItems.push({
+            id: cartItem.id,
+            name: cartItem.name,
+            requested: cartItem.quantity,
+            available: stockItem?.balance || 0,
+            type: 'out',
+          });
+        } 
+        // Eğer istenen miktar stoktan fazlaysa
+        else if (stockItem.balance < cartItem.quantity) {
+          outOfStockItems.push({
+            id: cartItem.id,
+            name: cartItem.name,
+            requested: cartItem.quantity,
+            available: Math.floor(stockItem.balance), // Ondalıklı balance'ı tam sayıya çevir
+            type: 'insufficient',
+          });
+        }
+      });
+
+      return {
+        available: outOfStockItems.length === 0,
+        outOfStockItems,
+      };
+    } catch (error) {
+      console.error('Stok kontrolü hatası:', error);
+      // Hata durumunda güvenli tarafta kalıp devam etmeyelim
+      throw error;
+    }
   };
 
-  // Check if order meets minimum requirement
-  const canCheckout = meetsMinimumOrder(totalAmount, deliverySettings);
+  const handleCheckout = async () => {
+    // Stok kontrolü yap
+    setCheckingStock(true);
+    try {
+      const stockCheck = await checkStockAvailability();
+      
+      if (!stockCheck.available) {
+        // Stokta olmayan veya yetersiz olan ürünleri göster
+        const stockMessages = stockCheck.outOfStockItems.map(item => {
+          if (item.type === 'out') {
+            return t('checkout.outOfStockItem', {productName: item.name});
+          } else {
+            return t('checkout.insufficientStockItem', {
+              productName: item.name,
+              available: item.available,
+              requested: item.requested,
+            });
+          }
+        }).join('\n');
+        
+        Alert.alert(
+          t('checkout.outOfStockTitle'),
+          `${t('checkout.outOfStockMessage')}\n\n${stockMessages}`,
+          [{text: t('common.ok')}]
+        );
+        return;
+      }
+      
+      // Stok kontrolü başarılı, checkout sayfasına git
+      navigation.navigate('Checkout' as never);
+    } catch (error) {
+      console.error('Stok kontrolü hatası:', error);
+      // Hata durumunda yine de checkout'a git (kullanıcı deneyimini bozmamak için)
+      Alert.alert(
+        t('common.error'),
+        t('checkout.stockCheckError'),
+        [
+          {text: t('common.cancel'), style: 'cancel'},
+          {text: t('common.ok'), onPress: () => navigation.navigate('Checkout' as never)}
+        ]
+      );
+    } finally {
+      setCheckingStock(false);
+    }
+  };
+
+  // Check if order meets minimum requirement (excluding cigarettes)
+  const meetsMinOrder = meetsMinimumOrderExcludingCigarettes(items, deliverySettings);
   
-  // Calculate delivery fee
-  const deliveryFee = calculateDeliveryFee(totalAmount, deliverySettings);
+  // Calculate amount excluding cigarettes for display
+  const amountExcludingCigarettes = calculateAmountExcludingCigarettes(items);
+  
+  // Check working hours - disable checkout if outside working hours
+  const canCheckout = meetsMinOrder && (!workingHoursEnabled || isWithinWorkingHours);
+  
+  // Calculate delivery fee (excluding cigarettes)
+  const deliveryFee = calculateDeliveryFeeExcludingCigarettes(items, deliverySettings);
 
   if (items.length === 0) {
     return (
@@ -85,67 +200,97 @@ export const CartScreen: React.FC = () => {
         ListFooterComponent={
           <View style={styles.footer}>
             {/* Ara Toplam */}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{t('checkout.subtotal')}</Text>
-              <Text style={styles.totalAmount}>₺{totalAmount.toFixed(2)}</Text>
+            <View style={styles.subtotalRow}>
+              <Text style={styles.subtotalLabel}>{t('checkout.subtotal')}</Text>
+              <Text style={styles.subtotalAmount}>{`₺${totalAmount.toFixed(2)}`}</Text>
             </View>
 
             {/* Teslimat ücreti bilgisi */}
-            {deliverySettings && canCheckout && (
+            {deliverySettings && (
               <View style={styles.deliveryFeeRow}>
-                <Text style={styles.deliveryFeeLabel}>Teslimat Ücreti</Text>
+                <Text style={styles.deliveryFeeLabel}>{t('cart.deliveryFee')}</Text>
                 <Text style={[styles.deliveryFeeValue, deliveryFee === 0 && styles.freeDeliveryText]}>
-                  {deliveryFee === 0 ? 'Ücretsiz' : `₺${deliveryFee.toFixed(2)}`}
+                  {deliveryFee === 0 ? t('cart.free') : `₺${deliveryFee.toFixed(2)}`}
                 </Text>
               </View>
             )}
 
+            {/* Toplam */}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{t('cart.total')}</Text>
+              <Text style={styles.totalAmount}>{`₺${(totalAmount + deliveryFee).toFixed(2)}`}</Text>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
             {/* Ücretsiz teslimat bilgisi */}
-            {deliverySettings && totalAmount < deliverySettings.min_order_for_free_delivery && canCheckout && (
+            {deliverySettings && amountExcludingCigarettes < deliverySettings.min_order_for_free_delivery && canCheckout && (
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle" size={18} color="#0C5460" style={styles.infoIcon} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoText}>
-                    ₺{deliverySettings.min_order_for_free_delivery.toFixed(2)} ve üzeri ücretsiz teslimat
+                    {t('cart.freeDeliveryInfo', {amount: `₺${deliverySettings.min_order_for_free_delivery.toFixed(2)}`})}
                   </Text>
                   <Text style={styles.infoSubText}>
-                    Kalan: ₺{(deliverySettings.min_order_for_free_delivery - totalAmount).toFixed(2)}
+                    {`${t('cart.remaining')}: ₺${(deliverySettings.min_order_for_free_delivery - amountExcludingCigarettes).toFixed(2)}`}
+                  </Text>
+                  <Text style={styles.infoSubText}>
+                    {t('cart.tobaccoExcluded')}
                   </Text>
                 </View>
               </View>
             )}
 
             {/* Ücretsiz teslimat kazanıldı */}
-            {deliverySettings && totalAmount >= deliverySettings.min_order_for_free_delivery && (
+            {deliverySettings && amountExcludingCigarettes >= deliverySettings.min_order_for_free_delivery && (
               <View style={styles.successBox}>
                 <Ionicons name="checkmark-circle" size={18} color="#155724" style={styles.successIcon} />
                 <Text style={styles.successText}>
-                  Ücretsiz teslimat kazandınız!
+                  {t('cart.freeDeliveryEarned')}
                 </Text>
               </View>
             )}
 
             {/* Minimum tutar uyarısı */}
-            {deliverySettings && !canCheckout && (
+            {deliverySettings && !meetsMinOrder && (
               <View style={styles.warningBox}>
                 <Ionicons name="warning" size={18} color="#856404" style={styles.warningIcon} />
                 <View style={styles.warningContent}>
                   <Text style={styles.warningText}>
-                    Minimum sipariş tutarı: ₺{deliverySettings.min_order_amount.toFixed(2)}
+                    {`${t('cart.minOrderAmount')}: ₺${deliverySettings.min_order_amount.toFixed(2)}`}
                   </Text>
                   <Text style={styles.warningSubText}>
-                    Kalan: ₺{(deliverySettings.min_order_amount - totalAmount).toFixed(2)}
+                    {`${t('cart.remaining')}: ₺${(deliverySettings.min_order_amount - amountExcludingCigarettes).toFixed(2)}`}
+                  </Text>
+                  <Text style={styles.warningInfoText}>
+                    {t('cart.tobaccoExcluded')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Çalışma saatleri uyarısı */}
+            {workingHoursEnabled && !isWithinWorkingHours && (
+              <View style={styles.workingHoursWarningBox}>
+                <Ionicons name="time" size={18} color="#d63384" style={styles.workingHoursWarningIcon} />
+                <View style={styles.workingHoursWarningContent}>
+                  <Text style={styles.workingHoursWarningText}>
+                    {t('cart.outsideWorkingHours', 'Hizmet saatleri dışında')}
+                  </Text>
+                  <Text style={styles.workingHoursWarningSubText}>
+                    {workingHoursMessage}
                   </Text>
                 </View>
               </View>
             )}
 
             <Button
-              title={t('cart.checkout')}
+              title={checkingStock ? t('checkout.checkingStock') : t('cart.checkout')}
               onPress={handleCheckout}
               fullWidth
               rounded
-              disabled={!canCheckout}
+              disabled={!canCheckout || checkingStock}
             />
           </View>
         }
@@ -325,15 +470,54 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     marginTop: spacing.md,
   },
+  subtotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  subtotalLabel: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  subtotalAmount: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  deliveryFeeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  deliveryFeeLabel: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  deliveryFeeValue: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  freeDeliveryText: {
+    color: colors.primary,
+  },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   totalLabel: {
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
     color: colors.text.primary,
   },
   totalAmount: {
@@ -341,24 +525,10 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     color: colors.primary,
   },
-  deliveryFeeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  deliveryFeeLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
-  },
-  deliveryFeeValue: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
-  },
-  freeDeliveryText: {
-    color: colors.primary,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
   },
   infoBox: {
     flexDirection: 'row',
@@ -432,6 +602,40 @@ const styles = StyleSheet.create({
   warningSubText: {
     fontSize: fontSize.xs,
     color: '#856404',
+  },
+  warningInfoText: {
+    fontSize: fontSize.xs,
+    color: '#856404',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  workingHoursWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8D7DA',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#F5C6CB',
+  },
+  workingHoursWarningIcon: {
+    marginRight: spacing.sm,
+    marginTop: 2,
+  },
+  workingHoursWarningContent: {
+    flex: 1,
+  },
+  workingHoursWarningText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: '#721c24',
+    marginBottom: 4,
+  },
+  workingHoursWarningSubText: {
+    fontSize: fontSize.xs,
+    color: '#721c24',
+    lineHeight: 16,
   },
 });
 

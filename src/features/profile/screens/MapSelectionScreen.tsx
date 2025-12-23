@@ -92,15 +92,12 @@ export const MapSelectionScreen: React.FC = () => {
   // Profile'dan telefon bilgisini yükle
   useEffect(() => {
     if (profile?.phone) {
-      console.log('📞 Map Selection - Profile\'dan telefon yükleniyor:', {
-        phone: profile.phone,
-        country_code: profile.country_code
-      });
+      // Debug log silindi - production'da gereksiz
       setPhoneNumber(profile.phone);
       setCountryCode(profile.country_code || '+90');
       setUserHasPhone(true);
     } else {
-      console.log('📞 Map Selection - Profile\'da telefon yok');
+      // Debug log silindi - production'da gereksiz
       setPhoneNumber('');
       setCountryCode('+90');
       setUserHasPhone(false);
@@ -113,13 +110,11 @@ export const MapSelectionScreen: React.FC = () => {
     
     const initializeLocation = async () => {
       try {
-        console.log('🗺️ Initializing MapSelectionScreen...', { isAuthenticated });
+        // Debug logları silindi - production'da gereksiz
         
         if (isAuthenticated && user?.id) {
-          console.log('👤 Loading saved location for user:', user.id);
           await loadSavedLocation();
         } else {
-          console.log('ℹ️ No authenticated user, skipping saved location');
           if (mounted) {
             setLoading(false);
           }
@@ -127,7 +122,6 @@ export const MapSelectionScreen: React.FC = () => {
         
         // Kayıtlı konum yüklendikten sonra GPS konumunu otomatik al
         if (mounted) {
-          console.log('📍 Getting current GPS location...');
           await getCurrentLocation(false);
         }
       } catch (error: any) {
@@ -185,17 +179,13 @@ export const MapSelectionScreen: React.FC = () => {
           
           // Kayıtlı konum için hemen hizmet alanı kontrolü yap
           const inDeliveryArea = isInDeliveryArea(locationData);
-          console.log('📍 Kayıtlı konum - teslimat alanı kontrolü:', {
-            locationData,
-            inDeliveryArea,
-            previousState: isLocationInDeliveryArea
-          });
+          // Debug log silindi - production'da gereksiz
           setIsLocationInDeliveryArea(inDeliveryArea);
           
           return true; // Kayıtlı konum var
         } else {
           // Konum yoksa GPS konumu alınacak
-          console.log('Kayıtlı konum bulunamadı, GPS konumu alınacak');
+          // Debug log silindi - production'da gereksiz
           return false;
         }
       }
@@ -212,7 +202,7 @@ export const MapSelectionScreen: React.FC = () => {
     }
 
     try {
-      console.log('📍 Getting current location...', { isManual });
+      // Debug log silindi - production'da gereksiz
       
       // Konum izni iste
       const {status} = await Location.requestForegroundPermissionsAsync();
@@ -232,7 +222,7 @@ export const MapSelectionScreen: React.FC = () => {
           );
         } else {
           // Otomatik çağrıda sessizce geç
-          console.log('ℹ️ Location permission denied, using default location');
+          // Debug log silindi - production'da gereksiz
           setLoading(false);
         }
         return;
@@ -275,16 +265,11 @@ export const MapSelectionScreen: React.FC = () => {
         // GPS konumu için hizmet alanı kontrolü
         setTimeout(() => {
           const inDeliveryArea = isInDeliveryArea(locationData);
-          console.log('📍 GPS konumu - teslimat alanı kontrolü:', {
-            locationData,
-            inDeliveryArea,
-            isManual,
-            previousState: isLocationInDeliveryArea
-          });
+          // Debug log silindi - production'da gereksiz
           setIsLocationInDeliveryArea(inDeliveryArea);
         }, isManual ? 1100 : 300); // Manuel ise animasyon süresini bekle
         
-        console.log('✅ GPS konumu başarıyla alındı:', userLocation);
+        // Debug log silindi - production'da gereksiz
       } else {
         // Kuzey Kıbrıs dışındaysa merkez konumu göster
         if (isManual) {
@@ -294,7 +279,7 @@ export const MapSelectionScreen: React.FC = () => {
             [{text: 'Tamam'}]
           );
         } else {
-          console.log('Kullanıcı Kuzey Kıbrıs dışında, varsayılan merkez kullanılıyor');
+          // Debug log silindi - production'da gereksiz
         }
       }
     } catch (error) {
@@ -302,7 +287,7 @@ export const MapSelectionScreen: React.FC = () => {
       if (isManual) {
         Alert.alert('Hata', 'Konumunuz alınamadı. Lütfen tekrar deneyin.');
       } else {
-        console.log('GPS konumu alınamadı, varsayılan konum kullanılacak');
+        // Debug log silindi - production'da gereksiz
       }
     } finally {
       setLoading(false);
@@ -321,11 +306,7 @@ export const MapSelectionScreen: React.FC = () => {
     // Teslimat alanı kontrolü - debounce ile gecikme ekle
     setTimeout(() => {
       const inDeliveryArea = isInDeliveryArea(newLocation);
-      console.log('📍 Harita hareket - teslimat alanı kontrolü:', {
-        location: newLocation,
-        inDeliveryArea,
-        previousState: isLocationInDeliveryArea
-      });
+      // Debug log silindi - production'da gereksiz
       setIsLocationInDeliveryArea(inDeliveryArea);
     }, 300); // 300ms gecikme ile kontrol et
     
@@ -334,7 +315,7 @@ export const MapSelectionScreen: React.FC = () => {
 
   // Adres seçildiğinde
   const handleLocationSelect = (location: LocationData) => {
-    console.log('📍 Seçilen konum:', location);
+    // Debug log silindi - production'da gereksiz
     
     const newRegion = {
       latitude: location.latitude,
@@ -353,11 +334,7 @@ export const MapSelectionScreen: React.FC = () => {
     // Teslimat alanı kontrolü - harita animasyonu bittikten sonra
     setTimeout(() => {
       const inDeliveryArea = isInDeliveryArea(location);
-      console.log('📍 Adres seçimi - teslimat alanı kontrolü:', {
-        location,
-        inDeliveryArea,
-        previousState: isLocationInDeliveryArea
-      });
+      // Debug log silindi - production'da gereksiz
       setIsLocationInDeliveryArea(inDeliveryArea);
     }, 600); // Animasyon süresi + 100ms
   };
@@ -438,11 +415,7 @@ export const MapSelectionScreen: React.FC = () => {
         updateData.phone = cleanPhone;
         updateData.country_code = countryCode;
         
-        console.log('📞 Telefon numarası kaydediliyor:', {
-          original: phoneNumber,
-          cleaned: cleanPhone,
-          countryCode: countryCode
-        });
+        // Debug log silindi - production'da gereksiz
       }
 
       const {error} = await supabase
@@ -455,20 +428,14 @@ export const MapSelectionScreen: React.FC = () => {
         throw error;
       }
 
-      console.log('✅ Konum başarıyla kaydedildi:', {
-        lat: selectedLocation.latitude,
-        lng: selectedLocation.longitude,
-        address: address || 'Konum seçildi',
-        addressDetails: addressDetails,
-        phone: phoneNumber
-      });
+      // Debug log silindi - production'da gereksiz
 
       // AuthStore'u güncelle
       try {
         const updatedProfile = await profileService.getProfile(user.id);
         if (updatedProfile) {
           setProfile(updatedProfile);
-          console.log('✅ Map Selection - Auth store profile updated');
+          // Debug log silindi - production'da gereksiz
         }
       } catch (error) {
         console.error('❌ Error refreshing profile in auth store:', error);
@@ -703,7 +670,7 @@ export const MapSelectionScreen: React.FC = () => {
                     <CountryCodePicker
                       selectedCode={countryCode}
                       onSelect={(code) => {
-                        console.log('🌍 Map Selection - Ülke kodu değişti:', code);
+                        // Debug log silindi - production'da gereksiz
                         setCountryCode(code);
                       }}
                       disabled={saving}

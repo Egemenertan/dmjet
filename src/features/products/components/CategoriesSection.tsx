@@ -44,16 +44,16 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
     return null;
   }
 
-  // Kategorileri translation ile hazırla
-  const processedCategories = categories?.map((category: any) => {
-    const translation = category.category_translations?.[0];
-    const categoryName = translation?.name || category.name;
-    return {
-      id: category.id,
-      name: categoryName,
-      image_url: category.image_url,
-    };
-  }) || [];
+  // Kategorileri hazırla
+  // Service katmanında çeviriler zaten uygulanmış durumda
+  // category.name otomatik olarak çevrilmiş veya Türkçe fallback içeriyor
+  const processedCategories = categories?.map((category: any) => ({
+    id: category.id,
+    name: category.name, // Zaten çevrilmiş veya Türkçe fallback
+    image_url: category.image_url,
+    original_name: category.original_name, // Debug için orijinal isim
+    has_translation: category.has_translation, // Çeviri var mı flag'i
+  })) || [];
 
   return (
     <View style={styles.container}>

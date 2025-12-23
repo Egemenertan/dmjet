@@ -11,7 +11,9 @@ export const colors = {
   
   // Background Colors
   background: '#FFFFFF',
+  backgroundSecondary: '#F8F9FA',
   white: '#FFFFFF',
+  black: '#000000',
   surface: '#F8F9FA',
   surfaceSecondary: '#F1F3F5',
   
@@ -22,6 +24,8 @@ export const colors = {
     tertiary: '#9CA3AF',
     inverse: '#FFFFFF',
   },
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B7280',
   
   // Border Colors
   border: '#E5E7EB',
@@ -30,6 +34,7 @@ export const colors = {
   // Status Colors
   success: '#10B981',
   warning: '#F59E0B',
+  warningLight: '#FEF3C7',
   error: '#EF4444',
   info: '#3B82F6',
   

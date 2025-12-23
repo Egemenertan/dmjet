@@ -18,11 +18,7 @@ let connectionType = 'unknown';
 NetInfo.addEventListener(state => {
   isConnected = state.isConnected ?? false;
   connectionType = state.type;
-  console.log('🌐 Network Status:', {
-    connected: isConnected,
-    type: connectionType,
-    details: state.details
-  });
+  // Log silindi - production'da gereksiz, sadece hata durumunda log
 });
 
 // Create a custom storage adapter with enhanced error handling
@@ -30,7 +26,7 @@ const customStorage = {
   getItem: async (key: string) => {
     try {
       const value = await AsyncStorage.getItem(key);
-      console.log(`📱 AsyncStorage getItem: ${key} = ${value ? 'found' : 'null'}`);
+      // Log silindi - production'da gereksiz
       return value;
     } catch (error) {
       console.error('❌ AsyncStorage getItem error:', error);
@@ -40,7 +36,7 @@ const customStorage = {
   setItem: async (key: string, value: string) => {
     try {
       await AsyncStorage.setItem(key, value);
-      console.log(`📱 AsyncStorage setItem: ${key} saved`);
+      // Log silindi - production'da gereksiz
     } catch (error) {
       console.error('❌ AsyncStorage setItem error:', error);
     }
@@ -48,7 +44,7 @@ const customStorage = {
   removeItem: async (key: string) => {
     try {
       await AsyncStorage.removeItem(key);
-      console.log(`📱 AsyncStorage removeItem: ${key} removed`);
+      // Log silindi - production'da gereksiz
     } catch (error) {
       console.error('❌ AsyncStorage removeItem error:', error);
     }
@@ -67,18 +63,14 @@ const withErrorHandling = async <T>(
       throw new Error(`Network offline - ${operationName} failed`);
     }
 
-    console.log(`🔄 Supabase ${operationName} starting...`);
+    // Loglar silindi - sadece hata durumunda log
     const result = await operation();
-    console.log(`✅ Supabase ${operationName} completed successfully`);
     return result;
   } catch (error: any) {
+    // Sadece kritik hatalarda log
     console.error(`❌ Supabase ${operationName} error:`, {
       message: error.message,
       code: error.code,
-      details: error.details,
-      hint: error.hint,
-      retry: retryCount,
-      network: { isConnected, connectionType }
     });
 
     // Retry logic for network errors
@@ -87,7 +79,6 @@ const withErrorHandling = async <T>(
       error.message?.includes('timeout') ||
       error.message?.includes('fetch')
     )) {
-      console.log(`🔄 Retrying ${operationName} (attempt ${retryCount + 1}/3)...`);
       await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
       return withErrorHandling(operation, operationName, retryCount + 1);
     }
@@ -105,11 +96,7 @@ if (!env.supabase.url || !env.supabase.anonKey) {
   throw new Error('Supabase configuration is incomplete');
 }
 
-console.log('🚀 Initializing Supabase client...', {
-  url: env.supabase.url.substring(0, 30) + '...',
-  hasAnonKey: !!env.supabase.anonKey,
-  platform: Platform.OS
-});
+// Supabase initialization log silindi - production'da gereksiz
 
 // Initialize Supabase client with enhanced configuration
 export const supabase = createClient(env.supabase.url, env.supabase.anonKey, {

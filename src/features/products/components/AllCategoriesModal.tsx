@@ -13,12 +13,14 @@ import {
   FlatList,
   Image,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import {Xmark} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
+import {useTranslation} from '@localization';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
-const ITEM_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.md * 2) / 3;
+const ITEM_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.md * 3) / 4;
 
 interface Category {
   id: string;
@@ -39,6 +41,8 @@ export const AllCategoriesModal: React.FC<AllCategoriesModalProps> = ({
   onClose,
   onCategoryPress,
 }) => {
+  const {t} = useTranslation();
+  
   const handleCategoryPress = (category: Category) => {
     onCategoryPress(category.id, category.name);
     onClose();
@@ -75,12 +79,25 @@ export const AllCategoriesModal: React.FC<AllCategoriesModalProps> = ({
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+      onRequestClose={onClose}
+      statusBarTranslucent={true}
+      presentationStyle="overFullScreen">
+      <StatusBar
+        backgroundColor="rgba(0, 0, 0, 0.5)"
+        barStyle="light-content"
+        translucent={true}
+      />
+      <TouchableOpacity 
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}>
+        <TouchableOpacity 
+          style={styles.modalContainer}
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Tüm Kategoriler</Text>
+            <Text style={styles.title}>{t('home.allCategories')}</Text>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={onClose}
@@ -99,12 +116,13 @@ export const AllCategoriesModal: React.FC<AllCategoriesModalProps> = ({
             data={categories}
             renderItem={renderCategory}
             keyExtractor={(item) => item.id}
-            numColumns={3}
+            numColumns={4}
             contentContainerStyle={styles.gridContent}
             showsVerticalScrollIndicator={false}
+            columnWrapperStyle={styles.columnWrapper}
           />
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };
@@ -114,13 +132,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+    paddingTop: 0,
+    marginTop: 0,
   },
   modalContainer: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: borderRadius.xxl,
-    borderTopRightRadius: borderRadius.xxl,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '85%',
     paddingTop: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -147,6 +175,10 @@ const styles = StyleSheet.create({
   gridContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xl,
+  },
+  columnWrapper: {
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   categoryItem: {
     width: ITEM_WIDTH,
@@ -188,14 +220,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
 });
-
-
-
-
-
-
-
-
-
-
 

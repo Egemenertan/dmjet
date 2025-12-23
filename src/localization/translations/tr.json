@@ -20,7 +20,9 @@
     "done": "Tamam",
     "yes": "Evet",
     "no": "Hayır",
-    "ok": "Tamam"
+    "ok": "Tamam",
+    "understood": "Anladım",
+    "all": "Tümü"
   },
   "auth": {
     "login": "Giriş Yap",
@@ -47,6 +49,7 @@
     "title": "Ana Sayfa",
     "searchPlaceholder": "Ürün, marka veya kategori ara",
     "categories": "Kategoriler",
+    "allCategories": "Tüm Kategoriler",
     "viewAll": "Tümünü Gör",
     "featuredProducts": "Öne Çıkan Ürünler",
     "specialOffers": "Özel Teklifler",
@@ -57,6 +60,19 @@
     "orders": "Siparişler",
     "cart": "Sepet",
     "searchPlaceholder": "Ürün ara..."
+  },
+  "search": {
+    "searchResults": "Arama Sonuçları",
+    "searching": "Ürünler aranıyor...",
+    "resultsFor": "için arama sonuçları",
+    "allProducts": "Tüm Ürünler",
+    "productsFound": "ürün bulundu",
+    "noResults": "Sonuç bulunamadı",
+    "noProductsFound": "için ürün bulunamadı.",
+    "tryDifferentKeywords": "Farklı anahtar kelimeler deneyin.",
+    "noCategoryProducts": "kategorisinde ürün bulunamadı.",
+    "tryDifferentCategory": "Farklı bir kategori deneyin.",
+    "noProductsYet": "Henüz ürün bulunmuyor."
   },
   "products": {
     "title": "Ürünler",
@@ -79,7 +95,14 @@
     "applyCoupon": "Kuponu Uygula",
     "removeCoupon": "Kuponu Kaldır",
     "itemRemoved": "Ürün sepetten çıkarıldı",
-    "quantity": "Adet"
+    "quantity": "Adet",
+    "outsideWorkingHours": "Hizmet saatleri dışında",
+    "minOrderAmount": "Minimum sipariş tutarı",
+    "remaining": "Kalan",
+    "tobaccoExcluded": "* Tütün ürünleri minimum tutara dahil değildir",
+    "freeDeliveryInfo": "{{amount}} ve üzeri ücretsiz teslimat",
+    "freeDeliveryEarned": "Ücretsiz teslimat kazandınız!",
+    "free": "Ücretsiz"
   },
   "orders": {
     "title": "Siparişlerim",
@@ -209,7 +232,16 @@
     "goToLogin": "Giriş Yap",
     "noAddressSelected": "Adres seçilmedi",
     "pleaseSelectAddress": "Lütfen teslimat adresinizi seçin",
-    "address": "Adres"
+    "address": "Adres",
+    "whatsappHelpMessage": "Merhaba, siparişim hakkında yardıma ihtiyacım var.",
+    "whatsappNotInstalled": "WhatsApp Yüklü Değil",
+    "whatsappNotInstalledMessage": "WhatsApp uygulaması cihazınızda yüklü değil.",
+    "stockCheckError": "Stok Kontrolü",
+    "outOfStockTitle": "Üzgünüz! 😔",
+    "outOfStockMessage": "Aşağıdaki ürünler stokta kalmadı. Lütfen sepetinizi güncelleyin:",
+    "outOfStockItem": "• {{productName}} - Stokta yok",
+    "insufficientStockItem": "• {{productName}} - Stokta sadece {{available}} adet var (Sepette: {{requested}} adet)",
+    "checkingStock": "Stok kontrol ediliyor..."
   },
   "admin": {
     "orders": "Siparişler",
@@ -249,6 +281,13 @@
     "unauthorizedMessage": "Bu sayfaya erişim yetkiniz yok.",
     "loadingOrders": "Siparişler yükleniyor...",
     "getDirections": "Yol Tarifi Al"
+  },
+  "workingHours": {
+    "alertTitle": "Hizmet Saatleri",
+    "currentHours": "Çalışma Saatlerimiz:",
+    "noteMessage": "Bu saatler dışında verilen siparişler bir sonraki çalışma günü işleme alınacaktır.",
+    "serviceOutside": "Hizmet Dışı",
+    "hours": "Çalışma Saatleri"
   }
 }
 

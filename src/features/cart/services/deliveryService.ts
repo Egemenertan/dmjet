@@ -4,7 +4,8 @@
  */
 
 import {supabase} from '@core/services/supabase';
-import {DeliverySettings} from '../types';
+import {DeliverySettings, CIGARETTE_CATEGORY_ID} from '../types';
+import {CartItem} from '@store/slices/cartStore';
 
 /**
  * Fetch delivery settings from Supabase
@@ -56,6 +57,32 @@ export const calculateDeliveryFee = (
 };
 
 /**
+ * Calculate delivery fee based on order amount (excluding cigarettes)
+ * Sigara kategorisindeki ürünler ücretsiz teslimat tutarına dahil edilmez
+ * @param items - Cart items
+ * @param settings - Delivery settings
+ * @returns Delivery fee amount
+ */
+export const calculateDeliveryFeeExcludingCigarettes = (
+  items: CartItem[],
+  settings: DeliverySettings | null
+): number => {
+  if (!settings) {
+    return 0; // No settings, no fee
+  }
+
+  const amountExcludingCigarettes = calculateAmountExcludingCigarettes(items);
+
+  // If order amount (excluding cigarettes) is greater than or equal to minimum for free delivery
+  if (amountExcludingCigarettes >= settings.min_order_for_free_delivery) {
+    return 0; // Free delivery
+  }
+
+  // Otherwise, charge delivery fee
+  return settings.delivery_fee;
+};
+
+/**
  * Check if order meets minimum requirement
  * @param orderAmount - Total order amount
  * @param settings - Delivery settings
@@ -71,5 +98,45 @@ export const meetsMinimumOrder = (
 
   // Sipariş tutarı minimum tutardan büyük veya eşit olmalı
   return orderAmount >= settings.min_order_amount;
+};
+
+/**
+ * Calculate order amount excluding cigarettes for minimum order check
+ * Sigara kategorisindeki ürünler minimum sipariş tutarına dahil edilmez
+ * @param items - Cart items
+ * @returns Order amount excluding cigarettes
+ */
+export const calculateAmountExcludingCigarettes = (items: CartItem[]): number => {
+  return items.reduce((sum, item) => {
+    // Sigara kategorisindeki ürünleri hariç tut
+    if (item.category_id === CIGARETTE_CATEGORY_ID) {
+      return sum;
+    }
+    
+    const itemPrice = item.discount
+      ? item.price * (1 - item.discount / 100)
+      : item.price;
+    
+    return sum + itemPrice * item.quantity;
+  }, 0);
+};
+
+/**
+ * Check if order meets minimum requirement (excluding cigarettes)
+ * Sigara kategorisindeki ürünler minimum sipariş tutarına dahil edilmez
+ * @param items - Cart items
+ * @param settings - Delivery settings
+ * @returns true if order meets minimum (excluding cigarettes), false otherwise
+ */
+export const meetsMinimumOrderExcludingCigarettes = (
+  items: CartItem[],
+  settings: DeliverySettings | null
+): boolean => {
+  if (!settings) {
+    return true; // No settings, no restriction
+  }
+
+  const amountExcludingCigarettes = calculateAmountExcludingCigarettes(items);
+  return amountExcludingCigarettes >= settings.min_order_amount;
 };
 

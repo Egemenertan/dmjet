@@ -49,16 +49,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [countryCode, setCountryCode] = useState(currentProfile.country_code || '+90');
   const [saving, setSaving] = useState(false);
 
-  // Debug: Modal açıldığında logla
-  useEffect(() => {
-    console.log('🎭 EditProfileModal - Visible:', visible);
-    console.log('👤 Current Profile:', currentProfile);
-  }, [visible, currentProfile]);
+  // Debug logları silindi - production'da gereksiz
 
   // Reset form when modal opens
   useEffect(() => {
     if (visible) {
-      console.log('🔄 Resetting form with:', currentProfile);
+      // Debug log silindi - production'da gereksiz
       setFullName(currentProfile.full_name || '');
       setPhone(currentProfile.phone || '');
       setCountryCode(currentProfile.country_code || '+90');
@@ -88,11 +84,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     try {
       setSaving(true);
       
-      console.log('📞 Profil güncelleme - telefon bilgileri:', {
-        original: phone,
-        cleaned: cleanPhone,
-        countryCode: countryCode
-      });
+      // Debug log silindi - production'da gereksiz
       
       await profileService.updateProfile(userId, {
         full_name: fullName.trim(),
@@ -199,7 +191,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <CountryCodePicker
                     selectedCode={countryCode}
                     onSelect={(code) => {
-                      console.log('🌍 EditProfileModal - Ülke kodu değişti:', code);
+                      // Debug log silindi - production'da gereksiz
                       setCountryCode(code);
                     }}
                     disabled={saving}

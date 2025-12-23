@@ -13,12 +13,13 @@ import {User} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '../services/productsService';
 import {ProductCard, CategoriesSection} from '../components';
-import {BannerCarousel, QueryErrorBoundary, LogoLoader} from '@shared/components';
+import {BannerCarousel, QueryErrorBoundary, LogoLoader, WorkingHoursBanner} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
 import {useTabNavigation} from '@core/navigation/TabContext';
+import {useWorkingHours} from '@core/hooks';
 
 export const HomeScreen: React.FC = () => {
   const {t} = useTranslation();
@@ -27,6 +28,7 @@ export const HomeScreen: React.FC = () => {
   const {language} = useAppStore();
   const {isAuthenticated, user} = useAuthStore();
   const {setActiveTab} = useTabNavigation();
+  const {isOutsideWorkingHours, workingHours, getOutsideWorkingHoursMessage} = useWorkingHours();
 
   const {data: products, isLoading, error, refetch} = useQuery({
     queryKey: ['products', language],
@@ -34,13 +36,6 @@ export const HomeScreen: React.FC = () => {
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    onError: (error: any) => {
-      console.error('❌ Products query error:', error);
-    },
-    onSuccess: (data) => {
-      console.log(`✅ Products query success: ${data?.length || 0} products loaded`);
-    },
   });
 
   const handleAddToCart = (product: any) => {
@@ -52,6 +47,7 @@ export const HomeScreen: React.FC = () => {
       image_url: product.image_url,
       discount: product.discount,
       barcode: product.barcode || null,
+      category_id: product.category_id || null,
     });
   };
 
@@ -154,6 +150,14 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Çalışma Saatleri Uyarısı */}
+        <WorkingHoursBanner
+          visible={isOutsideWorkingHours}
+          message={getOutsideWorkingHoursMessage()}
+          workingHours={workingHours}
+          showDismissButton={false}
+        />
+
         {/* Kategoriler Section - Yatay Scroll */}
         <CategoriesSection onCategoryPress={handleCategoryPress} />
 
@@ -169,14 +173,14 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('home.featuredProducts')}</Text>
           <FlatList
             data={products}
-            renderItem={({item}) => {
+            renderItem={({item}: {item: any}) => {
               const translation = item.product_translations?.[0];
               return (
                 <ProductCard
                   id={item.id}
                   name={translation?.name || item.name}
                   price={item.price}
-                  image_url={item.image_url}
+                  image_url={item.image_url || ''}
                   discount={item.discount}
                   onPress={() => {
                     // @ts-ignore - Navigation type issue

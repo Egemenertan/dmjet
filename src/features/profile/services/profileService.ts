@@ -26,7 +26,7 @@ class ProfileService {
    */
   async getProfile(userId: string): Promise<ProfileData | null> {
     try {
-      auth.debug(`Fetching profile for user: ${userId}`);
+      // Debug log silindi - production'da gereksiz
       
       const { data, error } = await supabase
         .from('profiles')
@@ -37,35 +37,26 @@ class ProfileService {
       if (error) {
         if (error.code === 'PGRST116') {
           // No profile found, this is expected for new users
-          console.log(`ℹ️ No profile found for user ${userId}, will create one`);
           return await this.createDefaultProfile(userId);
         }
         console.error('❌ Profile fetch error:', {
           code: error.code,
           message: error.message,
-          details: error.details,
-          userId
         });
         throw error;
       }
 
       if (!data) {
-        console.warn(`⚠️ Profile query returned null for user ${userId}`);
         return await this.createDefaultProfile(userId);
       }
 
-      auth.debug('Profile fetched successfully', {
-        userId: data.id,
-        hasFullName: !!data.full_name,
-        hasLocation: !!(data.location_lat && data.location_lng)
-      });
+      // Debug log silindi - production'da gereksiz
 
       return data;
     } catch (error: any) {
       console.error('❌ Profile service error:', {
         message: error.message,
         code: error.code,
-        userId
       });
       throw error;
     }
@@ -76,7 +67,7 @@ class ProfileService {
    */
   private async createDefaultProfile(userId: string): Promise<ProfileData | null> {
     try {
-      console.log(`🆕 Creating default profile for user: ${userId}`);
+      // Log silindi - production'da gereksiz
       
       // Get user email from auth
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -115,7 +106,7 @@ class ProfileService {
         throw error;
       }
 
-      console.log('✅ Default profile created successfully');
+      // Log silindi - production'da gereksiz
       return data;
     } catch (error: any) {
       console.error('❌ Default profile creation failed:', error);

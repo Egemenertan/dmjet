@@ -17,6 +17,7 @@ import {useQuery} from '@tanstack/react-query';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {productsService} from '@features/products/services/productsService';
 import {useAppStore} from '@store/slices/appStore';
+import {useTranslation} from '@localization';
 
 interface CategoryFilterProps {
   onCategoryChange: (categoryId: string | null, categoryName: string) => void;
@@ -31,6 +32,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   selectedCategoryId,
   selectedSubcategoryId,
 }) => {
+  const {t} = useTranslation();
   const {language} = useAppStore();
 
   // Kategorileri çek
@@ -49,23 +51,19 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
     enabled: !!selectedCategoryId,
   });
 
-  // Kategorileri translation ile hazırla
-  const processedCategories = categories?.map((category: any) => {
-    const translation = category.category_translations?.[0];
-    return {
-      id: category.id,
-      name: translation?.name || category.name,
-    };
-  }) || [];
+  // Kategorileri hazırla
+  // Service katmanında çeviriler zaten uygulanmış durumda
+  const processedCategories = categories?.map((category: any) => ({
+    id: category.id,
+    name: category.name, // Zaten çevrilmiş veya Türkçe fallback
+  })) || [];
 
-  // Alt kategorileri translation ile hazırla
-  const processedSubcategories = subcategories?.map((subcategory: any) => {
-    const translation = subcategory.subcategory_translations?.[0];
-    return {
-      id: subcategory.id,
-      name: translation?.name || subcategory.name,
-    };
-  }) || [];
+  // Alt kategorileri hazırla
+  // Service katmanında çeviriler zaten uygulanmış durumda
+  const processedSubcategories = subcategories?.map((subcategory: any) => ({
+    id: subcategory.id,
+    name: subcategory.name, // Zaten çevrilmiş veya Türkçe fallback
+  })) || [];
 
   if (categoriesLoading) {
     return (
@@ -89,7 +87,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             !selectedCategoryId && styles.filterButtonActive,
           ]}
           onPress={() => {
-            onCategoryChange(null, 'Tümü');
+            onCategoryChange(null, t('common.all'));
             onSubcategoryChange(null, '');
           }}
           activeOpacity={0.7}>
@@ -98,7 +96,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               styles.filterButtonText,
               !selectedCategoryId && styles.filterButtonTextActive,
             ]}>
-            Tümü
+            {t('common.all')}
           </Text>
         </TouchableOpacity>
 
@@ -153,7 +151,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                     styles.subcategoryButtonText,
                     !selectedSubcategoryId && styles.filterButtonTextActive,
                   ]}>
-                  Tümü
+                  {t('common.all')}
                 </Text>
               </TouchableOpacity>
 

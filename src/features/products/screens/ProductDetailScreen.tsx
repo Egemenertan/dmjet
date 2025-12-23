@@ -82,6 +82,7 @@ export const ProductDetailScreen: React.FC = () => {
       image_url: product.image_url,
       discount: product.discount,
       barcode: product.barcode || null,
+      category_id: product.category_id || null,
     });
   };
 
@@ -137,8 +138,8 @@ export const ProductDetailScreen: React.FC = () => {
   }
 
   const translation = product.product_translations?.[0];
-  const productName = translation?.name || product.name;
-  const finalPrice = product.discount 
+  const productName = translation?.name || product.name || 'Ürün';
+  const finalPrice = (product.discount && product.discount > 0)
     ? product.price * (1 - product.discount / 100) 
     : product.price;
 
@@ -176,7 +177,7 @@ export const ProductDetailScreen: React.FC = () => {
               }
             ]}
           >
-            {product.image_url ? (
+            {product.image_url && product.image_url.trim() !== '' ? (
               <OptimizedImage 
                 source={{uri: product.image_url}} 
                 style={styles.productImage}
@@ -189,9 +190,9 @@ export const ProductDetailScreen: React.FC = () => {
               </View>
             )}
             
-            {product.discount && product.discount > 0 && (
+            {product.discount != null && product.discount > 0 && (
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>-{product.discount}%</Text>
+                <Text style={styles.discountText}>{`-${Math.round(product.discount)}%`}</Text>
               </View>
             )}
           </Animated.View>
@@ -202,10 +203,10 @@ export const ProductDetailScreen: React.FC = () => {
           <Text style={styles.productName}>{productName}</Text>
           
           <View style={styles.priceRow}>
-            {product.discount && product.discount > 0 && (
-              <Text style={styles.originalPrice}>₺{product.price.toFixed(2)}</Text>
+            {product.discount != null && product.discount > 0 && (
+              <Text style={styles.originalPrice}>{`₺${product.price.toFixed(2)}`}</Text>
             )}
-            <Text style={styles.price}>₺{finalPrice.toFixed(2)}</Text>
+            <Text style={styles.price}>{`₺${finalPrice.toFixed(2)}`}</Text>
           </View>
         </View>
       </ScrollView>

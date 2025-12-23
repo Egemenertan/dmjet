@@ -28,18 +28,13 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   // Güvenlik kontrolü
   const hasAccess = React.useMemo(() => {
     if (!profile) {
-      console.warn('🔒 RoleGuard: Profil yüklenmemiş, erişim reddedildi');
+      // Debug log silindi - production'da gereksiz
       return false;
     }
 
     const hasRole = allowedRoles.includes(profile.role);
     
-    console.log('🔍 RoleGuard Kontrolü:', {
-      userRole: profile.role,
-      allowedRoles,
-      hasAccess: hasRole,
-      userId: profile.id,
-    });
+    // Debug log silindi - production'da gereksiz
 
     return hasRole;
   }, [profile, allowedRoles]);
@@ -111,4 +106,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
 

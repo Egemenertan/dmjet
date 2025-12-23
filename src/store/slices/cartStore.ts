@@ -15,6 +15,7 @@ export interface CartItem {
   image_url?: string;
   discount?: number;
   barcode?: number | null;
+  category_id?: string | null;
 }
 
 interface CartState {

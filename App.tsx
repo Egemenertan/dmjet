@@ -11,13 +11,15 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {RootNavigator} from '@core/navigation';
 import {supabase} from '@core/services/supabase';
 import {useAuthStore} from '@store/slices/authStore';
+import {useAppStore} from '@store/slices/appStore';
 import {profileService} from '@features/profile/services/profileService';
 import {NotificationProvider} from '@core/contexts/NotificationContext';
+import {WorkingHoursProvider} from '@core/contexts/WorkingHoursContext';
 import {ErrorBoundary} from '@shared/components/ErrorBoundary';
 import {colors} from '@core/constants';
 import {initSentry, setUser, clearUser} from '@core/services/sentry';
 import {auth} from '@core/utils';
-import './src/localization/i18n';
+import i18n from './src/localization/i18n';
 
 // Initialize Sentry
 initSentry();
@@ -27,7 +29,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error: any) => {
-        console.log(`🔄 Query retry ${failureCount}/3:`, error.message);
+        // Debug log silindi - production'da gereksiz
         // Don't retry on 4xx errors (client errors)
         if (error?.status >= 400 && error?.status < 500) {
           return false;
@@ -36,30 +38,28 @@ const queryClient = new QueryClient({
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
-      onError: (error: any) => {
-        console.error('🚨 React Query Error:', {
-          message: error.message,
-          code: error.code,
-          status: error.status,
-        });
-      },
+      gcTime: 10 * 60 * 1000, // 10 minutes
     },
     mutations: {
       retry: 1,
-      onError: (error: any) => {
-        console.error('🚨 React Query Mutation Error:', {
-          message: error.message,
-          code: error.code,
-          status: error.status,
-        });
-      },
     },
   },
 });
 
 function App(): React.JSX.Element {
   const {setSession, setProfile, setLoading} = useAuthStore();
+  const {setLanguage} = useAppStore();
+
+  // Uygulama başlangıcında i18n ve AppStore dilini senkronize et
+  useEffect(() => {
+    const syncLanguage = () => {
+      const currentLanguage = i18n.language as 'tr' | 'en' | 'ru';
+      console.log('🌍 Syncing language on app start:', currentLanguage);
+      setLanguage(currentLanguage);
+    };
+    
+    syncLanguage();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -70,32 +70,24 @@ function App(): React.JSX.Element {
     // Enhanced profile fetching with retry logic
     const fetchProfileWithRetry = async (userId: string): Promise<void> => {
       try {
-        auth.debug(`Fetching profile for user ${userId}`, {
-          attempt: profileRetryCount + 1,
-          maxRetries: MAX_PROFILE_RETRIES + 1
-        });
+        // Debug log silindi - production'da gereksiz
         
         const profile = await profileService.getProfile(userId);
         
         if (!mounted) return;
         
         if (profile) {
-          auth.info('Profile loaded successfully', {
-            id: profile.id,
-            hasFullName: !!profile.full_name,
-            hasLocation: !!(profile.location_lat && profile.location_lng)
-          });
+          // Debug log silindi - production'da gereksiz
           
           setProfile(profile);
           
           // Set user context in Sentry
           setUser({
             id: userId,
-            email: profile.email,
-            fullName: profile.full_name,
+            email: profile.email || undefined,
+            fullName: profile.full_name || undefined,
           });
         } else {
-          auth.warn('Profile is null, creating default profile entry');
           setProfile(null);
         }
         
@@ -104,13 +96,11 @@ function App(): React.JSX.Element {
         console.error(`❌ Profile fetch error (attempt ${profileRetryCount + 1}):`, {
           message: error.message,
           code: error.code,
-          userId
         });
 
         if (profileRetryCount < MAX_PROFILE_RETRIES) {
           profileRetryCount++;
           const retryDelay = Math.min(1000 * Math.pow(2, profileRetryCount - 1), 5000);
-          console.log(`🔄 Retrying profile fetch in ${retryDelay}ms...`);
           
           setTimeout(() => {
             if (mounted) {
@@ -129,7 +119,7 @@ function App(): React.JSX.Element {
     // Check active session and fetch profile
     const initializeAuth = async () => {
       try {
-        console.log('🔐 Initializing authentication...');
+        // Debug log silindi - production'da gereksiz
         
         // Add a small delay to ensure AsyncStorage is ready
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -144,25 +134,17 @@ function App(): React.JSX.Element {
 
         if (!mounted) return;
         
-        console.log('📱 Session status:', {
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          userId: session?.user?.id,
-          email: session?.user?.email
-        });
+        // Debug log silindi - production'da gereksiz
         
         setSession(session);
         
         // Fetch user profile if session exists
         if (session?.user) {
           await fetchProfileWithRetry(session.user.id);
-        } else {
-          console.log('ℹ️ No active session found');
         }
       } catch (error: any) {
         console.error('❌ Auth initialization error:', {
           message: error.message,
-          stack: error.stack
         });
       } finally {
         if (mounted) {
@@ -179,19 +161,13 @@ function App(): React.JSX.Element {
       const {
         data: {subscription},
       } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('🔄 Auth state changed:', {
-          event,
-          hasSession: !!session,
-          userId: session?.user?.id,
-          email: session?.user?.email
-        });
+        // Debug log silindi - production'da gereksiz
 
         if (!mounted) return;
 
         setSession(session);
 
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in, fetching profile...');
           profileRetryCount = 0; // Reset retry count for new sign in
           
           // Add delay for Google OAuth to ensure session is fully established
@@ -201,13 +177,11 @@ function App(): React.JSX.Element {
             }
           }, 1000);
         } else if (event === 'SIGNED_OUT') {
-          console.log('👋 User signed out, clearing profile...');
           if (mounted) {
             setProfile(null);
             clearUser();
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          console.log('🔄 Token refreshed, checking profile...');
           // Don't refetch profile on token refresh unless it's missing
           const currentProfile = useAuthStore.getState().profile;
           if (!currentProfile && session.user) {
@@ -221,7 +195,6 @@ function App(): React.JSX.Element {
           // Handle other events where session exists
           const currentProfile = useAuthStore.getState().profile;
           if (!currentProfile) {
-            console.log('🔄 Session exists but no profile, fetching...');
             setTimeout(async () => {
               if (mounted) {
                 await fetchProfileWithRetry(session.user.id);
@@ -238,11 +211,10 @@ function App(): React.JSX.Element {
       });
 
       authSubscription = subscription;
-      console.log('✅ Auth state listener established');
+      // Debug log silindi - production'da gereksiz
     } catch (error: any) {
       console.error('❌ Error setting up auth listener:', {
         message: error.message,
-        stack: error.stack
       });
     }
 
@@ -258,11 +230,13 @@ function App(): React.JSX.Element {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NotificationProvider>
-          <StatusBar
-            barStyle="dark-content"
-            backgroundColor={colors.background}
-          />
-          <RootNavigator />
+          <WorkingHoursProvider>
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={colors.background}
+            />
+            <RootNavigator />
+          </WorkingHoursProvider>
         </NotificationProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

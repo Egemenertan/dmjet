@@ -30,6 +30,7 @@ export const setUser = (user: {
   id: string;
   email?: string;
   username?: string;
+  fullName?: string;
 }) => {
   // Stub function
 };

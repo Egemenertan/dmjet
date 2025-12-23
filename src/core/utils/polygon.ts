@@ -53,11 +53,7 @@ export const DELIVERY_AREA_POLYGON: Coordinate[] = [
  */
 export const isInDeliveryArea = (coordinate: Coordinate): boolean => {
   const result = isPointInPolygon(coordinate, DELIVERY_AREA_POLYGON);
-  console.log('🔍 Teslimat alanı kontrolü:', {
-    coordinate,
-    result,
-    polygon: DELIVERY_AREA_POLYGON
-  });
+  // Debug log silindi - production'da gereksiz (her harita hareketinde çağrılıyor)
   return result;
 };
 

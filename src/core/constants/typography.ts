@@ -45,6 +45,13 @@ export const fontSize = {
   xxxl: 32,
 } as const;
 
+// Typography object for easier access
+export const typography = {
+  sizes: fontSize,
+  weights: fontWeight,
+  family: fontFamily,
+} as const;
+
 export type FontSizeKey = keyof typeof fontSize;
 export type FontWeightKey = keyof typeof fontWeight;
 

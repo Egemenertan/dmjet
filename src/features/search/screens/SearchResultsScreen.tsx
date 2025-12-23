@@ -41,7 +41,7 @@ export const SearchResultsScreen: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string>('Tümü');
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string>(t('common.all'));
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
   const [selectedSubcategoryName, setSelectedSubcategoryName] = useState<string>('');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -58,8 +58,8 @@ export const SearchResultsScreen: React.FC = () => {
       }
 
       try {
-        // Önce alt kategori eşleşmesi kontrol et
-        const subcategoryMatch = await searchService.findMatchingSubcategory(initialQuery);
+        // Önce alt kategori eşleşmesi kontrol et (çok dilli)
+        const subcategoryMatch = await searchService.findMatchingSubcategory(initialQuery, language);
         if (subcategoryMatch) {
           setSelectedCategoryId(subcategoryMatch.categoryId);
           setSelectedSubcategoryId(subcategoryMatch.id);
@@ -79,8 +79,8 @@ export const SearchResultsScreen: React.FC = () => {
           return;
         }
 
-        // Alt kategori yoksa kategori eşleşmesi kontrol et
-        const categoryMatch = await searchService.findMatchingCategory(initialQuery);
+        // Alt kategori yoksa kategori eşleşmesi kontrol et (çok dilli)
+        const categoryMatch = await searchService.findMatchingCategory(initialQuery, language);
         if (categoryMatch) {
           setSelectedCategoryId(categoryMatch.id);
           setSelectedCategoryName(categoryMatch.name);
@@ -195,7 +195,7 @@ export const SearchResultsScreen: React.FC = () => {
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={styles.footerText}>Daha fazla ürün yükleniyor...</Text>
+        <Text style={styles.footerText}>{t('common.loading')}</Text>
       </View>
     );
   };
@@ -215,7 +215,7 @@ export const SearchResultsScreen: React.FC = () => {
               strokeWidth={2}
             />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Arama Sonuçları</Text>
+          <Text style={styles.headerTitle}>{t('search.searchResults')}</Text>
         </View>
 
         {/* Category Filter */}
@@ -229,7 +229,7 @@ export const SearchResultsScreen: React.FC = () => {
         {/* Ürünler Listesi */}
         <View style={styles.productsContainer}>
         {productsLoading ? (
-          <LogoLoader text="Ürünler aranıyor..." />
+          <LogoLoader text={t('search.searching')} />
         ) : products && products.length > 0 ? (
           <FlatList
             data={products}
@@ -259,11 +259,14 @@ export const SearchResultsScreen: React.FC = () => {
               <View style={styles.resultsTitleContainer}>
                 <View style={styles.resultsTitleRow}>
                   {searchQuery ? (
-                    <Text style={styles.resultsTitle}>"{searchQuery}"</Text>
-                  ) : selectedCategoryName === 'Tümü' ? (
-                    <Text style={styles.resultsTitle}>Tüm Ürünler</Text>
+                    <>
+                      <Text style={styles.resultsTitle}>"{searchQuery}"</Text>
+                      <Text style={styles.resultsSubtitle}>{t('search.resultsFor')}</Text>
+                    </>
+                  ) : selectedCategoryName === t('common.all') ? (
+                    <Text style={styles.resultsTitle}>{t('search.allProducts')}</Text>
                   ) : null}
-                  {selectedCategoryName !== 'Tümü' && (
+                  {selectedCategoryName !== t('common.all') && (
                     <Text style={styles.categoryBadge}>
                       {selectedCategoryName}
                       {selectedSubcategoryName && ` • ${selectedSubcategoryName}`}
@@ -271,7 +274,7 @@ export const SearchResultsScreen: React.FC = () => {
                   )}
                 </View>
                 <Text style={styles.resultsCount}>
-                  {totalCount} ürün bulundu
+                  {totalCount} {t('search.productsFound')}
                 </Text>
               </View>
             )}
@@ -285,29 +288,29 @@ export const SearchResultsScreen: React.FC = () => {
               color={colors.text.tertiary}
               strokeWidth={1.5}
             />
-            <Text style={styles.emptyTitle}>Sonuç bulunamadı</Text>
+            <Text style={styles.emptyTitle}>{t('search.noResults')}</Text>
             {searchQuery ? (
               <>
                 <Text style={styles.emptyText}>
-                  "{searchQuery}" için ürün bulunamadı.
+                  "{searchQuery}" {t('search.noProductsFound')}
                 </Text>
                 <Text style={styles.emptySubtext}>
-                  Farklı anahtar kelimeler deneyin.
+                  {t('search.tryDifferentKeywords')}
                 </Text>
               </>
-            ) : selectedCategoryName !== 'Tümü' ? (
+            ) : selectedCategoryName !== t('common.all') ? (
               <>
                 <Text style={styles.emptyText}>
                   {selectedCategoryName}
-                  {selectedSubcategoryName && ` - ${selectedSubcategoryName}`} kategorisinde ürün bulunamadı.
+                  {selectedSubcategoryName && ` - ${selectedSubcategoryName}`} {t('search.noCategoryProducts')}
                 </Text>
                 <Text style={styles.emptySubtext}>
-                  Farklı bir kategori deneyin.
+                  {t('search.tryDifferentCategory')}
                 </Text>
               </>
             ) : (
               <Text style={styles.emptyText}>
-                Henüz ürün bulunmuyor.
+                {t('search.noProductsYet')}
               </Text>
             )}
           </View>
@@ -371,6 +374,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
+  },
+  resultsSubtitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
   },
   categoryBadge: {
     fontSize: fontSize.sm,

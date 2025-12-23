@@ -164,3 +164,4 @@ COMMENT ON COLUMN orders.status IS 'Order status: preparing (hazırlanıyor) -> 
 
 
 
+

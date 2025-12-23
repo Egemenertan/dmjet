@@ -25,6 +25,7 @@ import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constan
 import {Button, Input} from '@shared/ui';
 import {authService} from '@features/auth/services/authService';
 import {useAuthStore} from '@store/slices/authStore';
+import {useAppStore} from '@store/slices/appStore';
 import {useTranslation, i18n, saveLanguage} from '@localization';
 import {supabase} from '@core/services/supabase';
 import {profileService} from '../services/profileService';
@@ -42,6 +43,7 @@ export const ProfileScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {user, isAuthenticated, profile, setProfile} = useAuthStore();
+  const {setLanguage} = useAppStore(); // AppStore'dan setLanguage'i al
   const {setActiveTab} = useTabNavigation();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
@@ -95,7 +97,7 @@ export const ProfileScreen: React.FC = () => {
 
     // Eğer profile zaten varsa ve güncel ise, cache'den kullan
     if (profile && (Date.now() - lastUpdateTime < 30000)) {
-      console.log('📋 Cache\'den profil bilgileri kullanılıyor');
+      // Debug log silindi - production'da gereksiz
       setUserLocation(profile.location_lat && profile.location_lng ? {
         latitude: profile.location_lat,
         longitude: profile.location_lng,
@@ -120,7 +122,7 @@ export const ProfileScreen: React.FC = () => {
 
     try {
       setLoadingLocation(true);
-      console.log('📍 Profil bilgileri yükleniyor...', user.id);
+      // Debug log silindi - production'da gereksiz
       
       // Önce aile_karti ile dene, yoksa aile_karti olmadan dene
       let data, error;
@@ -133,7 +135,7 @@ export const ProfileScreen: React.FC = () => {
       
       // Eğer aile_karti kolonu yoksa, onsuz dene
       if (result.error?.code === '42703') {
-        console.log('ℹ️ aile_karti column not found, trying without it...');
+        // Debug log silindi - production'da gereksiz
         const fallbackResult = await supabase
           .from('profiles')
           .select('location_lat, location_lng, address, address_details, full_name, phone, country_code, avatar_url')
@@ -204,13 +206,11 @@ export const ProfileScreen: React.FC = () => {
         
         // Push token durumunu logla
         if ('push_token' in data) {
+          // Debug logları silindi - production'da gereksiz
           if (data.push_token && typeof data.push_token === 'string') {
-            console.log('✅ Push token mevcut:', data.push_token.substring(0, 30) + '...');
-            if ('push_token_updated_at' in data) {
-              console.log('   Son güncelleme:', data.push_token_updated_at);
-            }
+            // Push token mevcut
           } else {
-            console.log('⚠️ Push token YOK - bildirimler çalışmayacak!');
+            // Push token yok
           }
         }
       }
@@ -271,13 +271,28 @@ export const ProfileScreen: React.FC = () => {
 
   const handleLanguageChange = async (languageCode: string) => {
     try {
+      // 1. i18n dilini değiştir (UI çevirileri için)
       await i18n.changeLanguage(languageCode);
+      
+      // 2. AsyncStorage'a kaydet
       await saveLanguage(languageCode);
+      
+      // 3. Local state'i güncelle
       setCurrentLanguage(languageCode);
+      
+      // 4. ÖNEMLI: AppStore'daki language state'ini güncelle
+      // Bu sayede kategori sorguları yeni dili kullanır
+      setLanguage(languageCode as 'tr' | 'en' | 'ru');
+      
+      // 5. Modal'ı kapat
       setIsLanguageModalVisible(false);
+      
+      // 6. Kullanıcıya bilgi ver
       Alert.alert(t('common.done'), t('profile.languageChanged'));
+      
+      console.log('✅ Language changed to:', languageCode);
     } catch (error) {
-      console.error('Error changing language:', error);
+      console.error('❌ Error changing language:', error);
       Alert.alert(t('common.error'), 'Dil değiştirilemedi');
     }
   };
@@ -484,7 +499,7 @@ export const ProfileScreen: React.FC = () => {
               <TouchableOpacity 
                 style={styles.editProfileButton}
                 onPress={() => {
-                  console.log('✅ Edit button clicked!');
+                  // Debug log silindi - production'da gereksiz
                   setIsEditModalVisible(true);
                 }}
                 activeOpacity={0.7}
@@ -645,7 +660,7 @@ export const ProfileScreen: React.FC = () => {
                     loadingEnabled={true}
                     loadingIndicatorColor={colors.primary}
                     loadingBackgroundColor={colors.background}
-                    onMapReady={() => console.log('📍 Map yüklendi')}
+                    onMapReady={() => {/* Debug log silindi - production'da gereksiz */}}
                   >
                     <Marker
                       coordinate={{
@@ -753,7 +768,7 @@ export const ProfileScreen: React.FC = () => {
       <EditProfileModal
         visible={isEditModalVisible}
         onClose={() => {
-          console.log('❌ Closing modal');
+          // Debug log silindi - production'da gereksiz
           setIsEditModalVisible(false);
         }}
         userId={user?.id || ''}
@@ -763,7 +778,7 @@ export const ProfileScreen: React.FC = () => {
           country_code: profileData.country_code,
         }}
         onSuccess={async () => {
-          console.log('✅ Profile updated successfully');
+          // Debug log silindi - production'da gereksiz
           // Cache'i temizle ve profil verilerini yeniden yükle
           setLastUpdateTime(0);
           await fetchUserLocation();
@@ -773,7 +788,7 @@ export const ProfileScreen: React.FC = () => {
               const updatedProfile = await profileService.getProfile(user.id);
               if (updatedProfile) {
                 setProfile(updatedProfile);
-                console.log('✅ Auth store profile updated:', updatedProfile.role);
+                // Debug log silindi - production'da gereksiz
               }
             } catch (error) {
               console.error('❌ Error refreshing profile in auth store:', error);

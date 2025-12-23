@@ -17,7 +17,7 @@ import {ProfileScreen} from '@features/profile/screens/ProfileScreen';
 import {ModernBottomBar} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAuthStore} from '@store/slices/authStore';
-import {TabProvider, useTabNavigation} from './TabContext';
+import {useTabNavigation} from './TabContext';
 
 const HomeStack = createStackNavigator();
 const OrdersStack = createStackNavigator();
@@ -40,18 +40,12 @@ const OrdersStackNavigator = () => {
   // Güvenlik kontrolü: Sadece picker veya courier rolü olan kullanıcılar AdminOrdersScreen'i görebilir
   const shouldShowAdminOrders = React.useMemo(() => {
     if (!profile) {
-      console.log('⚠️ OrdersStack: Profil yüklenmemiş, normal OrdersScreen gösteriliyor');
       return false;
     }
     
     const isAuthorizedRole = profile.role === 'picker' || profile.role === 'courier';
     
-    console.log('🔍 OrdersStack - Role Kontrolü:', {
-      role: profile.role,
-      canAccessAdminOrders,
-      isAuthorizedRole,
-      willShowAdminScreen: isAuthorizedRole,
-    });
+    // Debug log silindi - production'da gereksiz
     
     return isAuthorizedRole;
   }, [profile, canAccessAdminOrders]);
@@ -95,7 +89,7 @@ const ProfileStackNavigator = () => {
   );
 };
 
-const MainTabsContent: React.FC = () => {
+export const MainTabs: React.FC = () => {
   const {activeTab, setActiveTab} = useTabNavigation();
   const navigation = useNavigation();
   const {items} = useCartStore();
@@ -155,14 +149,6 @@ const MainTabsContent: React.FC = () => {
         isAdmin={false} // Admin paneli askıya alındı
       />
     </View>
-  );
-};
-
-export const MainTabs: React.FC = () => {
-  return (
-    <TabProvider>
-      <MainTabsContent />
-    </TabProvider>
   );
 };
 

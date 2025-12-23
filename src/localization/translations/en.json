@@ -20,7 +20,9 @@
     "done": "Done",
     "yes": "Yes",
     "no": "No",
-    "ok": "OK"
+    "ok": "OK",
+    "understood": "Understood",
+    "all": "All"
   },
   "auth": {
     "login": "Login",
@@ -47,6 +49,7 @@
     "title": "Home",
     "searchPlaceholder": "Search for products, brands or categories",
     "categories": "Categories",
+    "allCategories": "All Categories",
     "viewAll": "View All",
     "featuredProducts": "Featured Products",
     "specialOffers": "Special Offers",
@@ -57,6 +60,19 @@
     "orders": "Orders",
     "cart": "Cart",
     "searchPlaceholder": "Search products..."
+  },
+  "search": {
+    "searchResults": "Search Results",
+    "searching": "Searching products...",
+    "resultsFor": "search results for",
+    "allProducts": "All Products",
+    "productsFound": "products found",
+    "noResults": "No results found",
+    "noProductsFound": "no products found.",
+    "tryDifferentKeywords": "Try different keywords.",
+    "noCategoryProducts": "no products found in category.",
+    "tryDifferentCategory": "Try a different category.",
+    "noProductsYet": "No products available yet."
   },
   "products": {
     "title": "Products",
@@ -79,7 +95,14 @@
     "applyCoupon": "Apply Coupon",
     "removeCoupon": "Remove Coupon",
     "itemRemoved": "Item removed from cart",
-    "quantity": "Qty"
+    "quantity": "Qty",
+    "outsideWorkingHours": "Outside service hours",
+    "minOrderAmount": "Minimum order amount",
+    "remaining": "Remaining",
+    "tobaccoExcluded": "* Tobacco products are not included in the minimum amount",
+    "freeDeliveryInfo": "Free delivery on orders over {{amount}}",
+    "freeDeliveryEarned": "You've earned free delivery!",
+    "free": "Free"
   },
   "orders": {
     "title": "My Orders",
@@ -209,7 +232,16 @@
     "goToLogin": "Go to Login",
     "noAddressSelected": "No address selected",
     "pleaseSelectAddress": "Please select your delivery address",
-    "address": "Address"
+    "address": "Address",
+    "whatsappHelpMessage": "Hello, I need help with my order.",
+    "whatsappNotInstalled": "WhatsApp Not Installed",
+    "whatsappNotInstalledMessage": "WhatsApp application is not installed on your device.",
+    "stockCheckError": "Stock Check",
+    "outOfStockTitle": "Sorry! 😔",
+    "outOfStockMessage": "The following products are out of stock. Please update your cart:",
+    "outOfStockItem": "• {{productName}} - Out of stock",
+    "insufficientStockItem": "• {{productName}} - Only {{available}} available (In cart: {{requested}})",
+    "checkingStock": "Checking stock..."
   },
   "admin": {
     "orders": "Orders",
@@ -249,6 +281,13 @@
     "unauthorizedMessage": "You don't have permission to access this page.",
     "loadingOrders": "Loading orders...",
     "getDirections": "Get Directions"
+  },
+  "workingHours": {
+    "alertTitle": "Service Hours",
+    "currentHours": "Our Working Hours:",
+    "noteMessage": "Orders placed outside these hours will be processed on the next business day.",
+    "serviceOutside": "Out of Service",
+    "hours": "Working Hours"
   }
 }
 

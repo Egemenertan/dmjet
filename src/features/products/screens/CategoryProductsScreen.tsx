@@ -102,6 +102,7 @@ export const CategoryProductsScreen: React.FC = () => {
       image_url: product.image_url,
       discount: product.discount,
       barcode: product.barcode || null,
+      category_id: product.category_id || null,
     });
   };
 
@@ -172,8 +173,8 @@ export const CategoryProductsScreen: React.FC = () => {
             </TouchableOpacity>
             
             {allCategories?.map((category: any) => {
-              const translation = category.category_translations?.[0];
-              const catName = translation?.name || category.name;
+              // Service katmanında çeviriler zaten uygulanmış
+              const catName = category.name; // Zaten çevrilmiş veya Türkçe fallback
               const isActive = category.id === currentCategoryId;
 
               return (
@@ -200,13 +201,13 @@ export const CategoryProductsScreen: React.FC = () => {
               {/* Tümü Butonu */}
               <SubcategoryChip
                 id="all"
-                name="Tümü"
+                name={t('common.all')}
                 isActive={selectedSubcategoryId === null}
                 onPress={() => handleSubcategoryPress(null)}
               />
               {subcategories.map((subcategory: any) => {
-                const translation = subcategory.subcategory_translations?.[0];
-                const subName = translation?.name || subcategory.name;
+                // Service katmanında çeviriler zaten uygulanmış
+                const subName = subcategory.name; // Zaten çevrilmiş veya Türkçe fallback
 
                 return (
                   <SubcategoryChip

@@ -5,7 +5,7 @@
 
 import {supabase} from '@core/services/supabase';
 import {Database} from '@core/types/database.types';
-import {sanitizeSearchQuery} from '@core/utils/sanitize';
+import {sanitizeSearchQuery, calculateMultiWordMatchScore, normalizeTurkishChars, normalizeSearchQuery} from '@core/utils/sanitize';
 import {getCategoryImageUrl, getProductImageUrl, api} from '@core/utils';
 
 type Stock = Database['public']['Tables']['stocks']['Row'];
@@ -18,7 +18,7 @@ export const productsService = {
    */
   async getProducts(language: string = 'tr', limit: number = 20) {
     try {
-      api.debug(`Fetching products (language: ${language}, limit: ${limit})`);
+      // Debug log silindi - production'da gereksiz
       
       const {data, error} = await supabase
         .from('stocks')
@@ -38,7 +38,7 @@ export const productsService = {
         .limit(limit);
 
       if (error) {
-        api.error('Products fetch error:', {
+        console.error('❌ Products fetch error:', {
           code: error.code,
           message: error.message
         });
@@ -46,11 +46,10 @@ export const productsService = {
       }
 
       if (!data) {
-        api.warn('Products query returned null');
         return [];
       }
 
-      api.debug(`Products fetched successfully: ${data.length} items`);
+      // Debug log silindi - production'da gereksiz
       
       // stocks verisini products formatına dönüştür
       const products = data.map(stock => ({
@@ -67,18 +66,11 @@ export const productsService = {
         categories: stock.categories,
       }));
 
-      // Log sample product for debugging
-      if (products.length > 0) {
-        api.debug('Sample product:', {
-          id: products[0].id,
-          name: products[0].name,
-          hasImage: !!products[0].image_url
-        });
-      }
+      // Debug log silindi - production'da gereksiz
 
       return products;
     } catch (error: any) {
-      api.error('Products service error:', {
+      console.error('❌ Products service error:', {
         message: error.message,
         code: error.code
       });
@@ -130,51 +122,93 @@ export const productsService = {
 
   /**
    * Get categories with translations
+   * Cypher projesindeki gibi optimize edilmiş çeviri yapısı
    * TR için direkt categories.name kullanılır, diğer diller için translations
+   * Çeviri yoksa fallback olarak Türkçe isim gösterilir
    */
   async getCategories(language: string = 'tr') {
-    // Türkçe için translation yok, direkt categories tablosundan çek
-    if (language === 'tr') {
-      const {data, error} = await supabase
+    try {
+      // Türkçe için translation yok, direkt categories tablosundan çek
+      if (language === 'tr') {
+        const {data, error} = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        
+        // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
+        return data?.map(category => ({
+          ...category,
+          image_url: getCategoryImageUrl(category.image_url),
+          original_name: category.name, // Orijinal Türkçe ismi sakla
+        })) || [];
+      }
+
+      // Diğer diller için: Önce tüm kategorileri çek
+      const {data: categories, error: categoriesError} = await supabase
         .from('categories')
         .select('*')
         .order('name');
 
-      if (error) throw error;
+      if (categoriesError) throw categoriesError;
+      if (!categories) return [];
+
+      // Sonra seçili dil için tüm çevirileri tek sorguda çek
+      const categoryIds = categories.map(c => c.id);
       
-      // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-      return data?.map(category => ({
-        ...category,
-        image_url: getCategoryImageUrl(category.image_url),
-      })) || [];
+      const {data: translations, error: translationsError} = await supabase
+        .from('category_translations')
+        .select('category_id, name, description, language_code')
+        .eq('language_code', language)
+        .in('category_id', categoryIds);
+
+      if (translationsError) {
+        console.warn('⚠️ Translation fetch error:', translationsError);
+        // Çeviri hatası olsa bile kategorileri Türkçe olarak döndür
+      }
+
+      // Çevirileri kategorilerle eşleştir
+      const translationMap = new Map(
+        translations?.map(t => [t.category_id, t]) || []
+      );
+
+      // Her kategori için çeviriyi uygula
+      return categories.map(category => {
+        const translation = translationMap.get(category.id);
+        
+        return {
+          ...category,
+          name: translation?.name || category.name, // Çeviri varsa kullan, yoksa Türkçe
+          description: translation?.description || category.description,
+          image_url: getCategoryImageUrl(category.image_url),
+          original_name: category.name, // Orijinal Türkçe ismi sakla
+          has_translation: !!translation, // Çeviri var mı flag'i
+        };
+      });
+    } catch (error: any) {
+      console.error('❌ Categories fetch error:', {
+        message: error.message,
+        language,
+      });
+      // Hata durumunda boş array döndür
+      return [];
     }
-
-    // Diğer diller için translations ile çek
-    const {data, error} = await supabase
-      .from('categories')
-      .select(`
-        *,
-        category_translations!inner(name, description, language_code)
-      `)
-      .eq('category_translations.language_code', language)
-      .order('name');
-
-    if (error) throw error;
-    
-    // Image URL'lerini Supabase Storage'dan tam URL'ye dönüştür
-    return data?.map(category => ({
-      ...category,
-      image_url: getCategoryImageUrl(category.image_url),
-    })) || [];
   },
 
   /**
    * Search products from stocks table
+   * Gelişmiş çoklu kelime araması, Türkçe karakterlere duyarsız
    */
   async searchProducts(query: string, language: string = 'tr') {
     // Sanitize search query
     const sanitizedQuery = sanitizeSearchQuery(query);
     
+    if (!sanitizedQuery) {
+      return [];
+    }
+
+    // Tüm aktif ürünleri getir
     const {data, error} = await supabase
       .from('stocks')
       .select(`
@@ -188,12 +222,39 @@ export const productsService = {
         subcategory_id
       `)
       .eq('is_active', true)
-      .ilike('name', `%${sanitizedQuery}%`);
+      .gt('balance', 1);
 
     if (error) throw error;
+
+    // Client-side filtreleme ve skorlama (çoklu kelime, Türkçe karakter desteği)
+    const normalizedQuery = normalizeSearchQuery(query);
+    
+    const scoredProducts = (data || [])
+      .map(stock => {
+        let score = 0;
+        
+        // Ürün adında çoklu kelime araması
+        const nameScore = calculateMultiWordMatchScore(query, stock.name || '');
+        score = Math.max(score, nameScore);
+        
+        // Barkod eşleşmesi
+        if (stock.barcode) {
+          const normalizedBarcode = normalizeTurkishChars(stock.barcode.toLowerCase());
+          if (normalizedBarcode.includes(normalizedQuery)) {
+            score = Math.max(score, 85);
+          }
+        }
+        
+        return {
+          ...stock,
+          matchScore: score
+        };
+      })
+      .filter(stock => stock.matchScore >= 40) // Minimum %40 eşleşme
+      .sort((a, b) => b.matchScore - a.matchScore); // Skora göre sırala
     
     // stocks verisini products formatına dönüştür
-    return data?.map(stock => ({
+    return scoredProducts.map(stock => ({
       id: stock.stock_id.toString(),
       name: stock.name || '',
       price: stock.sell_price || 0,
@@ -204,7 +265,7 @@ export const productsService = {
       subcategory_id: stock.subcategory_id,
       discount: 0,
       is_active: true,
-    })) || [];
+    }));
   },
 
   /**
@@ -245,36 +306,78 @@ export const productsService = {
 
   /**
    * Get subcategories by category
+   * Cypher projesindeki gibi optimize edilmiş çeviri yapısı
    * TR için direkt subcategories.name, diğer diller için translations
+   * Çeviri yoksa fallback olarak Türkçe isim gösterilir
    */
   async getSubcategoriesByCategory(categoryId: string, language: string = 'tr') {
-    // Türkçe için translation yok, direkt subcategories tablosundan çek
-    if (language === 'tr') {
-      const {data, error} = await supabase
+    try {
+      // Türkçe için translation yok, direkt subcategories tablosundan çek
+      if (language === 'tr') {
+        const {data, error} = await supabase
+          .from('subcategories')
+          .select('*')
+          .eq('category_id', categoryId)
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        
+        return data?.map(subcategory => ({
+          ...subcategory,
+          original_name: subcategory.name,
+        })) || [];
+      }
+
+      // Diğer diller için: Önce tüm alt kategorileri çek
+      const {data: subcategories, error: subcategoriesError} = await supabase
         .from('subcategories')
         .select('*')
         .eq('category_id', categoryId)
         .eq('is_active', true)
         .order('name');
 
-      if (error) throw error;
-      return data;
+      if (subcategoriesError) throw subcategoriesError;
+      if (!subcategories || subcategories.length === 0) return [];
+
+      // Sonra seçili dil için tüm çevirileri tek sorguda çek
+      const subcategoryIds = subcategories.map(s => s.id);
+      const {data: translations, error: translationsError} = await supabase
+        .from('subcategory_translations')
+        .select('subcategory_id, name, description, language_code')
+        .eq('language_code', language)
+        .in('subcategory_id', subcategoryIds);
+
+      if (translationsError) {
+        console.warn('⚠️ Subcategory translation fetch error:', translationsError);
+        // Çeviri hatası olsa bile alt kategorileri Türkçe olarak döndür
+      }
+
+      // Çevirileri alt kategorilerle eşleştir
+      const translationMap = new Map(
+        translations?.map(t => [t.subcategory_id, t]) || []
+      );
+
+      // Her alt kategori için çeviriyi uygula
+      return subcategories.map(subcategory => {
+        const translation = translationMap.get(subcategory.id);
+        
+        return {
+          ...subcategory,
+          name: translation?.name || subcategory.name, // Çeviri varsa kullan, yoksa Türkçe
+          description: translation?.description || subcategory.description,
+          original_name: subcategory.name, // Orijinal Türkçe ismi sakla
+          has_translation: !!translation, // Çeviri var mı flag'i
+        };
+      });
+    } catch (error: any) {
+      console.error('❌ Subcategories fetch error:', {
+        message: error.message,
+        categoryId,
+        language,
+      });
+      return [];
     }
-
-    // Diğer diller için translations ile çek
-    const {data, error} = await supabase
-      .from('subcategories')
-      .select(`
-        *,
-        subcategory_translations!inner(name, description, language_code)
-      `)
-      .eq('category_id', categoryId)
-      .eq('subcategory_translations.language_code', language)
-      .eq('is_active', true)
-      .order('name');
-
-    if (error) throw error;
-    return data;
   },
 
   /**

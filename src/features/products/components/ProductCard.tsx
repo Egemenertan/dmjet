@@ -32,7 +32,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
 }) => {
   const {t} = useTranslation();
-  const finalPrice = discount ? price * (1 - discount / 100) : price;
+  const finalPrice = (discount && discount > 0) ? price * (1 - discount / 100) : price;
   const {items, updateQuantity, removeItem} = useCartStore();
   
   // Sepetteki ürün miktarını bul
@@ -73,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
-        {image_url ? (
+        {image_url && image_url.trim() !== '' ? (
           <OptimizedImage 
             source={{uri: image_url}} 
             style={styles.image}
@@ -85,9 +85,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <Text style={styles.placeholderText}>No Image</Text>
           </View>
         )}
-        {discount && discount > 0 && (
+        {discount != null && discount > 0 && (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>-{discount}%</Text>
+            <Text style={styles.discountText}>{`-${discount}%`}</Text>
           </View>
         )}
       </View>
@@ -98,10 +98,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </Text>
 
         <View style={styles.priceContainer}>
-          {discount && discount > 0 && (
-            <Text style={styles.originalPrice}>₺{price.toFixed(2)}</Text>
+          {discount != null && discount > 0 && (
+            <Text style={styles.originalPrice}>{`₺${price.toFixed(2)}`}</Text>
           )}
-          <Text style={styles.price}>₺{finalPrice.toFixed(2)}</Text>
+          <Text style={styles.price}>{`₺${finalPrice.toFixed(2)}`}</Text>
         </View>
 
         {!isInCart ? (
@@ -130,9 +130,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               activeOpacity={0.7}
             >
               {quantity === 1 ? (
-                <Trash width={18} height={18} color={colors.text.inverse} strokeWidth={2} />
+                <Trash width={18} height={18} color={colors.error} strokeWidth={2} />
               ) : (
-                <Text style={styles.quantityButtonText}>−</Text>
+                <Text style={styles.decrementText}>−</Text>
               )}
             </TouchableOpacity>
             
@@ -236,12 +236,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.error,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  decrementText: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.error,
+    lineHeight: fontSize.xl,
   },
   incrementButton: {
     width: 36,
@@ -259,7 +261,7 @@ const styles = StyleSheet.create({
   quantityButtonText: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-    color: colors.text.inverse,
+    color: colors.white,
     lineHeight: fontSize.xl,
   },
   quantityDisplay: {
