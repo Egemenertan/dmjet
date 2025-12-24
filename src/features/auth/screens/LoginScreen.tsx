@@ -4,9 +4,22 @@
  */
 
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, Alert, TouchableOpacity, Image} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 import {NavArrowLeft} from 'iconoir-react-native';
 import {Button, Input} from '@shared/ui';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
@@ -16,10 +29,11 @@ import {GoogleIcon} from '../components/GoogleIcon';
 import {AuthStackParamList} from '@core/navigation/types';
 
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
+type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC = () => {
   const {t} = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<LoginScreenNavigationProp>();
   const route = useRoute<LoginScreenRouteProp>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -137,7 +151,16 @@ export const LoginScreen: React.FC = () => {
         />
       </TouchableOpacity>
 
-      <View style={styles.content}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.content}>
         <Image
           source={require('../../../../assets/dmjet.png')}
           style={styles.logo}
@@ -161,6 +184,15 @@ export const LoginScreen: React.FC = () => {
           secureTextEntry
           placeholder="••••••••"
         />
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={styles.forgotPasswordButton}
+          activeOpacity={0.7}>
+          <Text style={styles.forgotPasswordText}>
+            {t('auth.forgotPassword')}
+          </Text>
+        </TouchableOpacity>
 
         <Button
           title={t('auth.login')}
@@ -189,12 +221,15 @@ export const LoginScreen: React.FC = () => {
 
         <Button
           title={t('auth.dontHaveAccount')}
-          onPress={() => navigation.navigate('Register' as never, returnTo ? {returnTo} : undefined)}
+          onPress={() => navigation.navigate('Register', returnTo ? {returnTo} : undefined)}
           variant="ghost"
           fullWidth
           style={styles.registerButton}
         />
-      </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -216,10 +251,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     zIndex: 10,
   },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     padding: spacing.lg,
     justifyContent: 'center',
+    minHeight: '100%',
   },
   logo: {
     width: 150,
@@ -274,6 +316,16 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     marginTop: spacing.sm,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  forgotPasswordText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
   },
 });
 

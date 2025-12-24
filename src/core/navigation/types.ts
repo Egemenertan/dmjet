@@ -11,6 +11,7 @@ export type AuthStackParamList = {
   Login: {returnTo?: keyof MainStackParamList} | undefined;
   Register: {returnTo?: keyof MainStackParamList} | undefined;
   ForgotPassword: undefined;
+  ResetPassword: undefined;
 };
 
 // Home Stack (nested in Home tab)

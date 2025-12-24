@@ -224,11 +224,30 @@ export const authService = {
    * Send password reset email
    */
   async resetPassword(email: string) {
-    const {error} = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'dmarjet://reset-password',
-    });
+    const {error} = await supabase.auth.resetPasswordForEmail(email);
 
     if (error) throw error;
+  },
+
+  /**
+   * Verify OTP and update password
+   */
+  async verifyOtpAndUpdatePassword(email: string, token: string, newPassword: string) {
+    // First verify the OTP
+    const {error: verifyError} = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+
+    if (verifyError) throw verifyError;
+
+    // Then update the password
+    const {error: updateError} = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) throw updateError;
   },
 
   /**

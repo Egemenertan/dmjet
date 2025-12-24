@@ -4,9 +4,22 @@
  */
 
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, Alert, ScrollView, Image, TouchableOpacity} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 import {NavArrowLeft} from 'iconoir-react-native';
 import {Button, Input} from '@shared/ui';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
@@ -16,10 +29,11 @@ import {GoogleIcon} from '../components/GoogleIcon';
 import {AuthStackParamList} from '@core/navigation/types';
 
 type RegisterScreenRouteProp = RouteProp<AuthStackParamList, 'Register'>;
+type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
 
 export const RegisterScreen: React.FC = () => {
   const {t} = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<RegisterScreenNavigationProp>();
   const route = useRoute<RegisterScreenRouteProp>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -134,7 +148,16 @@ export const RegisterScreen: React.FC = () => {
         />
       </TouchableOpacity>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View>
         <Image
           source={require('../../../../assets/dmjet.png')}
           style={styles.logo}
@@ -193,11 +216,14 @@ export const RegisterScreen: React.FC = () => {
 
         <Button
           title={t('auth.alreadyHaveAccount')}
-          onPress={() => navigation.navigate('Login' as never, returnTo ? {returnTo} : undefined)}
+          onPress={() => navigation.navigate('Login', returnTo ? {returnTo} : undefined)}
           variant="ghost"
           fullWidth
         />
-      </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -219,10 +245,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     zIndex: 10,
   },
+  keyboardView: {
+    flex: 1,
+  },
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,
     justifyContent: 'center',
+    minHeight: '100%',
   },
   logo: {
     width: 150,

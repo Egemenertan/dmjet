@@ -27,6 +27,8 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import MapView, {Region, PROVIDER_GOOGLE, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {CompositeNavigationProp} from '@react-navigation/native';
 import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {Button} from '@shared/ui';
 import {useAuthStore} from '@store/slices/authStore';
@@ -42,6 +44,12 @@ import {
   getDeliveryAreaRegion,
   Coordinate,
 } from '@core/utils/polygon';
+import {MainStackParamList, RootStackParamList} from '@core/navigation/types';
+
+type MapSelectionScreenNavigationProp = CompositeNavigationProp<
+  StackNavigationProp<MainStackParamList, 'MapSelection'>,
+  StackNavigationProp<RootStackParamList>
+>;
 
 interface LocationData {
   latitude: number;
@@ -72,7 +80,7 @@ const DELIVERY_AREA_CENTER = getDeliveryAreaRegion();
 
 export const MapSelectionScreen: React.FC = () => {
   const {t} = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<MapSelectionScreenNavigationProp>();
   const {user, isAuthenticated, profile, setProfile} = useAuthStore();
   const mapRef = useRef<MapView>(null);
 
@@ -534,10 +542,10 @@ export const MapSelectionScreen: React.FC = () => {
               style={styles.authRequiredButton}
               onPress={() => {
                 // Auth sayfasına yönlendir ve geri döndüğünde checkout'a git
-                navigation.navigate('Auth' as never, {
+                navigation.navigate('Auth', {
                   screen: 'Login',
                   params: { returnTo: 'Checkout' }
-                } as never);
+                });
               }}
               activeOpacity={0.8}
             >

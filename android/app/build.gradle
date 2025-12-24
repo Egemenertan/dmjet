@@ -84,6 +84,13 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 // Sentry upload temporarily disabled for build
 // apply from: new File(["node", "--print", "require('path').dirname(require.resolve('@sentry/react-native/package.json'))"].execute().text.trim(), "sentry.gradle")
 
+// Load .env file
+def envFile = rootProject.file('../.env')
+def envProps = new Properties()
+if (envFile.exists()) {
+    envFile.withInputStream { envProps.load(it) }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -99,6 +106,10 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        
+        // Google Maps API Key from .env
+        def googleMapsApiKey = envProps.getProperty('GOOGLE_MAPS_API_KEY_ANDROID') ?: envProps.getProperty('GOOGLE_MAPS_API_KEY') ?: ''
+        manifestPlaceholders = [GOOGLE_MAPS_API_KEY: googleMapsApiKey]
     }
     signingConfigs {
         debug {

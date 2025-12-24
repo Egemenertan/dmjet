@@ -420,6 +420,8 @@ export const CheckoutScreen: React.FC = () => {
     const message = encodeURIComponent(t('checkout.whatsappHelpMessage'));
     
     // Try multiple URL schemes for better compatibility
+    // whatsapp:// scheme works best on native builds
+    // https://wa.me/ works as fallback
     const urls = [
       `whatsapp://send?phone=${phoneNumber}&text=${message}`,
       `https://wa.me/${phoneNumber}?text=${message}`,
@@ -435,7 +437,8 @@ export const CheckoutScreen: React.FC = () => {
           return;
         }
       } catch (error) {
-        console.log(`Failed to open ${url}:`, error);
+        console.log(`Failed to check/open ${url}:`, error);
+        // Continue to next URL
       }
     }
     

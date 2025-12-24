@@ -10,10 +10,9 @@ import {
   WelcomeScreen,
   LoginScreen,
   RegisterScreen,
+  ForgotPasswordScreen,
+  ResetPasswordScreen,
 } from '@features/auth/screens';
-
-// Placeholder for ForgotPassword - will be implemented later
-const ForgotPasswordScreen = () => null;
 
 const Stack = createStackNavigator<AuthStackParamList>();
 
@@ -24,6 +23,7 @@ export const AuthNavigator: React.FC = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 };

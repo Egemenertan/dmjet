@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 import {NavArrowLeft, Bell, BellOff} from 'iconoir-react-native';
 import {
   colors,
@@ -25,6 +26,9 @@ import {
 import {useNotificationContext} from '@core/contexts/NotificationContext';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
+import {MainStackParamList} from '@core/navigation/types';
+
+type NotificationsScreenNavigationProp = StackNavigationProp<MainStackParamList>;
 
 interface NotificationItemProps {
   notification: any;
@@ -90,7 +94,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 };
 
 export const NotificationsScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NotificationsScreenNavigationProp>();
   const {
     notifications,
     unreadCount,
@@ -113,10 +117,7 @@ export const NotificationsScreen: React.FC = () => {
     // Bildirim data'sına göre yönlendirme yap
     if (notification.data?.orderId) {
       // Sipariş detay sayfasına git
-      navigation.navigate(
-        'OrderDetail' as never,
-        {orderId: notification.data.orderId} as never,
-      );
+      navigation.navigate('OrderDetail', {orderId: notification.data.orderId});
     }
   };
 
