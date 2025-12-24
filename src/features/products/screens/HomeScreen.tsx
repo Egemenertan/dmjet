@@ -1,13 +1,14 @@
 /**
  * Home Screen
  * Main screen showing products and categories
+ * Optimized for fast loading with parallel queries and memoization
  */
 
-import React from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Image, ActivityIndicator} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
-import {useQuery} from '@tanstack/react-query';
+import {useQueries} from '@tanstack/react-query';
 import {BlurView} from 'expo-blur';
 import {User} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
@@ -30,15 +31,37 @@ export const HomeScreen: React.FC = () => {
   const {setActiveTab} = useTabNavigation();
   const {isOutsideWorkingHours, workingHours, getOutsideWorkingHoursMessage} = useWorkingHours();
 
-  const {data: products, isLoading, error, refetch} = useQuery({
-    queryKey: ['products', language],
-    queryFn: () => productsService.getProducts(language),
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+  // Paralel veri yükleme - ürünler ve kategoriler aynı anda
+  const [productsQuery, categoriesQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ['products', language],
+        queryFn: () => productsService.getProducts(language, 20),
+        retry: 2,
+        retryDelay: 1000,
+        staleTime: 2 * 60 * 1000, // 2 dakika
+        gcTime: 5 * 60 * 1000, // 5 dakika (eski cacheTime)
+      },
+      {
+        queryKey: ['categories', language],
+        queryFn: () => productsService.getCategories(language),
+        retry: 2,
+        retryDelay: 1000,
+        staleTime: 10 * 60 * 1000, // 10 dakika - kategoriler daha az değişir
+        gcTime: 30 * 60 * 1000, // 30 dakika
+      },
+    ],
   });
 
-  const handleAddToCart = (product: any) => {
+  const {data: products, isLoading: productsLoading, error: productsError, refetch: refetchProducts} = productsQuery;
+  const {data: categories, isLoading: categoriesLoading} = categoriesQuery;
+
+  const isLoading = productsLoading;
+  const error = productsError;
+
+  // TÜM HOOK'LAR KOŞULSUZ OLARAK EN ÜSTTE TANIMLANMALI
+  // Memoized handlers - gereksiz re-render'ları önler
+  const handleAddToCart = useCallback((product: any) => {
     const translation = product.product_translations?.[0];
     addItem({
       id: product.id,
@@ -49,31 +72,54 @@ export const HomeScreen: React.FC = () => {
       barcode: product.barcode || null,
       category_id: product.category_id || null,
     });
-  };
+  }, [addItem]);
 
-  const handleCategoryPress = (categoryId: string, categoryName: string) => {
+  const handleCategoryPress = useCallback((categoryId: string, categoryName: string) => {
     // Kategori detay sayfasına yönlendir
     // @ts-ignore - Navigation type issue
     navigation.navigate('CategoryProducts', {
       categoryId,
       categoryName,
     });
-  };
+  }, [navigation]);
 
-  const handleBannerPress = (banner: any) => {
+  const handleBannerPress = useCallback((banner: any) => {
     // Banner click handling - can be extended with deep linking
     // Currently disabled - no action on banner press
     // You can add navigation or other actions here in the future
-  };
+  }, []);
 
-  // Banner verisi - assets/banner.png kullanılıyor
-  const demoBanners = [
+  // Banner verisi - memoized, her render'da yeniden oluşturulmaz
+  const demoBanners = useMemo(() => [
     {
       id: '1',
       image_source: require('../../../../assets/banner.png'),
     },
-  ];
+  ], []);
 
+  // Render item memoized - FlatList performansı için
+  const renderProduct = useCallback(({item}: {item: any}) => {
+    const translation = item.product_translations?.[0];
+    return (
+      <ProductCard
+        id={item.id}
+        name={translation?.name || item.name}
+        price={item.price}
+        image_url={item.image_url || ''}
+        discount={item.discount}
+        onPress={() => {
+          // @ts-ignore - Navigation type issue
+          navigation.navigate('ProductDetail', {productId: item.id});
+        }}
+        onAddToCart={() => handleAddToCart(item)}
+      />
+    );
+  }, [navigation, handleAddToCart]);
+
+  // Key extractor memoized
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  // KOŞULLU RENDER'LAR HOOK'LARDAN SONRA
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -93,7 +139,7 @@ export const HomeScreen: React.FC = () => {
           </Text>
           <TouchableOpacity 
             style={styles.retryButton} 
-            onPress={() => refetch()}
+            onPress={() => refetchProducts()}
           >
             <Text style={styles.retryButtonText}>Tekrar Dene</Text>
           </TouchableOpacity>
@@ -159,7 +205,12 @@ export const HomeScreen: React.FC = () => {
         />
 
         {/* Kategoriler Section - Yatay Scroll */}
-        <CategoriesSection onCategoryPress={handleCategoryPress} />
+        {!categoriesLoading && categories && categories.length > 0 && (
+          <CategoriesSection 
+            categories={categories}
+            onCategoryPress={handleCategoryPress} 
+          />
+        )}
 
         {/* Banner - Tek banner gösterimi */}
         <BannerCarousel 
@@ -173,33 +224,22 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('home.featuredProducts')}</Text>
           <FlatList
             data={products}
-            renderItem={({item}: {item: any}) => {
-              const translation = item.product_translations?.[0];
-              return (
-                <ProductCard
-                  id={item.id}
-                  name={translation?.name || item.name}
-                  price={item.price}
-                  image_url={item.image_url || ''}
-                  discount={item.discount}
-                  onPress={() => {
-                    // @ts-ignore - Navigation type issue
-                    navigation.navigate('ProductDetail', {productId: item.id});
-                  }}
-                  onAddToCart={() => handleAddToCart(item)}
-                />
-              );
-            }}
-            keyExtractor={(item) => item.id}
+            renderItem={renderProduct}
+            keyExtractor={keyExtractor}
             numColumns={2}
             scrollEnabled={false}
             contentContainerStyle={styles.productsGrid}
-            // Performance optimizations
+            // Gelişmiş performans optimizasyonları
             removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={10}
-            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            updateCellsBatchingPeriod={100}
+            windowSize={5}
+            initialNumToRender={4}
+            getItemLayout={(data, index) => ({
+              length: 280, // Yaklaşık kart yüksekliği
+              offset: 280 * Math.floor(index / 2),
+              index,
+            })}
           />
         </View>
       </ScrollView>

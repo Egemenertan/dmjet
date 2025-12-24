@@ -9,7 +9,7 @@ import {MainStackParamList} from './types';
 import {MainTabs} from './MainTabs';
 import {CartScreen} from '@features/cart/screens/CartScreen';
 import {CheckoutScreen} from '@features/cart/screens/CheckoutScreen';
-import {MapSelectionScreen} from '@features/profile/screens/MapSelectionScreen';
+import {MapSelectionScreen, LegalScreen} from '@features/profile/screens';
 import {SearchResultsScreen} from '@features/search/screens';
 import {ProductDetailScreen, CategoryProductsScreen} from '@features/products/screens';
 import {TabProvider} from './TabContext';
@@ -31,6 +31,7 @@ export const MainNavigator: React.FC = () => {
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
         <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
         <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+        <Stack.Screen name="Legal" component={LegalScreen} />
       </Stack.Navigator>
     </TabProvider>
   );

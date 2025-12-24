@@ -5,10 +5,3 @@
 import 'expo/AppEntry';
 
 
-
-
-
-
-
-
-

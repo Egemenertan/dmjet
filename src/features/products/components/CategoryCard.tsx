@@ -1,9 +1,10 @@
 /**
  * CategoryCard Component
  * Kategori kartı - görsel ve isim ile
+ * Optimized with React.memo for better horizontal scroll performance
  */
 
-import React from 'react';
+import React, {memo} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {OptimizedImage} from '@shared/components/OptimizedImage';
@@ -15,7 +16,7 @@ interface CategoryCardProps {
   onPress: () => void;
 }
 
-export const CategoryCard: React.FC<CategoryCardProps> = ({
+export const CategoryCard: React.FC<CategoryCardProps> = memo(({
   name,
   image_url,
   onPress,
@@ -43,7 +44,14 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       </Text>
     </TouchableOpacity>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison - sadece gerekli prop'lar değiştiğinde re-render
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.name === nextProps.name &&
+    prevProps.image_url === nextProps.image_url
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

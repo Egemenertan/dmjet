@@ -1,9 +1,10 @@
 /**
  * BannerCarousel Component
  * Otomatik scroll özellikli modern carousel
+ * Optimized: Gereksiz re-render'lar önlendi, memo eklendi
  */
 
-import React, {useRef, useEffect, useState} from 'react';
+import React, {useRef, useEffect, useState, memo, useCallback} from 'react';
 import {
   View,
   ScrollView,
@@ -32,7 +33,7 @@ interface BannerCarouselProps {
   autoScroll?: boolean;
 }
 
-export const BannerCarousel: React.FC<BannerCarouselProps> = ({
+export const BannerCarousel: React.FC<BannerCarouselProps> = memo(({
   banners,
   onBannerPress,
   autoScroll = true,
@@ -41,8 +42,8 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto scroll fonksiyonu
-  const scrollToNext = () => {
+  // Auto scroll fonksiyonu - useCallback ile memoize
+  const scrollToNext = useCallback(() => {
     if (!banners || banners.length === 0) return;
 
     const nextIndex = (currentIndex + 1) % banners.length;
@@ -54,10 +55,11 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
     });
 
     setCurrentIndex(nextIndex);
-  };
+  }, [banners, currentIndex]);
 
-  // Auto scroll timer
+  // Auto scroll timer - sadece gerektiğinde çalışır
   useEffect(() => {
+    // Tek banner varsa veya autoScroll kapalıysa timer başlatma
     if (!autoScroll || !banners || banners.length <= 1) return;
 
     autoScrollTimer.current = setInterval(scrollToNext, AUTO_SCROLL_INTERVAL);
@@ -67,31 +69,31 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         clearInterval(autoScrollTimer.current);
       }
     };
-  }, [currentIndex, autoScroll, banners]);
+  }, [currentIndex, autoScroll, banners, scrollToNext]);
 
-  // Scroll event handler
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Scroll event handler - memoized
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / (CARD_WIDTH + spacing.md * 2));
     
     if (index !== currentIndex && index >= 0 && index < banners.length) {
       setCurrentIndex(index);
     }
-  };
+  }, [currentIndex, banners]);
 
-  // Manuel scroll başladığında timer'ı sıfırla
-  const handleScrollBeginDrag = () => {
+  // Manuel scroll başladığında timer'ı sıfırla - memoized
+  const handleScrollBeginDrag = useCallback(() => {
     if (autoScrollTimer.current) {
       clearInterval(autoScrollTimer.current);
     }
-  };
+  }, []);
 
-  // Manuel scroll bittiğinde timer'ı yeniden başlat
-  const handleScrollEndDrag = () => {
+  // Manuel scroll bittiğinde timer'ı yeniden başlat - memoized
+  const handleScrollEndDrag = useCallback(() => {
     if (!autoScroll || !banners || banners.length <= 1) return;
 
     autoScrollTimer.current = setInterval(scrollToNext, AUTO_SCROLL_INTERVAL);
-  };
+  }, [autoScroll, banners, scrollToNext]);
 
   if (!banners || banners.length === 0) {
     return null;
@@ -123,21 +125,29 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
         ))}
       </ScrollView>
 
-      {/* Pagination dots */}
-      <View style={styles.pagination}>
-        {banners.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              index === currentIndex && styles.activeDot,
-            ]}
-          />
-        ))}
-      </View>
+      {/* Pagination dots - sadece birden fazla banner varsa göster */}
+      {banners.length > 1 && (
+        <View style={styles.pagination}>
+          {banners.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                index === currentIndex && styles.activeDot,
+              ]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison - sadece banners değiştiğinde re-render
+  return (
+    prevProps.banners.length === nextProps.banners.length &&
+    prevProps.autoScroll === nextProps.autoScroll
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

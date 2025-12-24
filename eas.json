@@ -15,6 +15,14 @@
       "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "SUPABASE_URL": "@env:SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "@env:GOOGLE_MAPS_API_KEY_ANDROID",
+        "GOOGLE_MAPS_API_KEY_IOS": "@env:GOOGLE_MAPS_API_KEY_IOS",
+        "SENTRY_DSN": "@env:SENTRY_DSN",
+        "SENTRY_AUTH_TOKEN": "@env:SENTRY_AUTH_TOKEN"
+      },
       "ios": {
         "simulator": true
       },
@@ -26,12 +34,14 @@
       "extends": "base",
       "distribution": "internal",
       "cache": {
-        "disabled": false
+        "disabled": true
       },
       "env": {
         "SUPABASE_URL": "@env:SUPABASE_URL",
         "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
         "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "@env:GOOGLE_MAPS_API_KEY_ANDROID",
+        "GOOGLE_MAPS_API_KEY_IOS": "@env:GOOGLE_MAPS_API_KEY_IOS",
         "SENTRY_DSN": "@env:SENTRY_DSN"
       },
       "ios": {
@@ -53,6 +63,8 @@
         "SUPABASE_URL": "@env:SUPABASE_URL",
         "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
         "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "@env:GOOGLE_MAPS_API_KEY_ANDROID",
+        "GOOGLE_MAPS_API_KEY_IOS": "@env:GOOGLE_MAPS_API_KEY_IOS",
         "SENTRY_DSN": "@env:SENTRY_DSN"
       },
       "android": {
@@ -74,6 +86,8 @@
         "SUPABASE_URL": "@env:SUPABASE_URL",
         "SUPABASE_ANON_KEY": "@env:SUPABASE_ANON_KEY",
         "GOOGLE_MAPS_API_KEY": "@env:GOOGLE_MAPS_API_KEY",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "@env:GOOGLE_MAPS_API_KEY_ANDROID",
+        "GOOGLE_MAPS_API_KEY_IOS": "@env:GOOGLE_MAPS_API_KEY_IOS",
         "SENTRY_DSN": "@env:SENTRY_DSN"
       },
       "android": {
@@ -86,7 +100,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleTeamId": "592QQ45TLH"
+      }
+    }
   }
 }
 

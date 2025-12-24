@@ -24,6 +24,7 @@ import {ModernBottomBar, LogoLoader} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
+import {useTabNavigation} from '@core/navigation/TabContext';
 
 type RouteParams = {
   CategoryProducts: {
@@ -41,6 +42,7 @@ export const CategoryProductsScreen: React.FC = () => {
 
   const {addItem, items} = useCartStore();
   const {language} = useAppStore();
+  const {activeTab, setActiveTab} = useTabNavigation();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // State'leri local olarak yönet - navigation replace kullanma
@@ -135,10 +137,12 @@ export const CategoryProductsScreen: React.FC = () => {
     );
   };
 
-  // Bottom bar tab change handler
+  // Bottom bar tab change handler - MainTabs'a geri dön ve tab'ı değiştir
   const handleTabChange = (tab: string) => {
+    // CategoryProducts bir stack screen olduğu için önce tab'ı değiştir, sonra MainTabs'a geri dön
+    setActiveTab(tab);
     // @ts-ignore
-    navigation.navigate('MainTabs', {screen: tab});
+    navigation.navigate('MainTabs');
   };
 
   // Bottom bar search handler
@@ -281,7 +285,7 @@ export const CategoryProductsScreen: React.FC = () => {
 
       {/* Modern Bottom Bar */}
       <ModernBottomBar
-        activeTab=""
+        activeTab={activeTab}
         onTabChange={handleTabChange}
         onSearch={handleBottomBarSearch}
         cartItemCount={cartItemCount}

@@ -26,6 +26,7 @@ import {useAppStore} from '@store/slices/appStore';
 import {LogoLoader} from '@shared/components';
 import {useTranslation} from '@localization';
 import {ModernBottomBar} from '@shared/components';
+import {useTabNavigation} from '@core/navigation/TabContext';
 
 type RouteParams = {
   SearchResults: {
@@ -48,6 +49,7 @@ export const SearchResultsScreen: React.FC = () => {
 
   const {addItem, items} = useCartStore();
   const {language} = useAppStore();
+  const {activeTab, setActiveTab} = useTabNavigation();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // Arama sorgusuna göre kategori/alt kategori eşleşmesi kontrol et
@@ -177,16 +179,10 @@ export const SearchResultsScreen: React.FC = () => {
 
   // Handle tab change
   const handleTabChange = (tab: string) => {
-    if (tab === 'Home') {
-      // @ts-ignore
-      navigation.navigate('MainTabs');
-    } else if (tab === 'Orders') {
-      // @ts-ignore
-      navigation.navigate('Orders');
-    } else if (tab === 'Cart') {
-      // @ts-ignore
-      navigation.navigate('Cart');
-    }
+    // SearchResults bir stack screen olduğu için önce tab'ı değiştir, sonra MainTabs'a geri dön
+    setActiveTab(tab);
+    // @ts-ignore
+    navigation.navigate('MainTabs');
   };
 
   // Render footer (loading indicator)
@@ -320,7 +316,7 @@ export const SearchResultsScreen: React.FC = () => {
 
       {/* Modern Bottom Bar */}
       <ModernBottomBar
-        activeTab=""
+        activeTab={activeTab}
         onTabChange={handleTabChange}
         onSearch={handleBottomBarSearch}
         cartItemCount={cartItemCount}

@@ -91,3 +91,5 @@ web-build/
 secrets-to-remove.txt
 *.sh
 .git-filter-repo-analysis.txt
+
+.env.local

@@ -4,12 +4,24 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NavArrowLeft } from 'iconoir-react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@core/constants';
-import { PushNotificationTest } from '../components/PushNotificationTest';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import {NavArrowLeft} from 'iconoir-react-native';
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  borderRadius,
+} from '@core/constants';
+import {PushNotificationTest} from '../components/PushNotificationTest';
 
 export const NotificationSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -20,8 +32,7 @@ export const NotificationSettingsScreen: React.FC = () => {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
+          style={styles.backButton}>
           <NavArrowLeft
             width={24}
             height={24}
@@ -36,8 +47,7 @@ export const NotificationSettingsScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         <PushNotificationTest />
       </ScrollView>
     </SafeAreaView>
@@ -77,13 +87,5 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
 });
-
-
-
-
-
-
-
-
 
 

@@ -3,7 +3,7 @@
  * Kullanıcının bildirimlerini gösterir
  */
 
-import React, { useEffect } from 'react';
+import React, {useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,22 +12,31 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NavArrowLeft, Bell, BellOff } from 'iconoir-react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@core/constants';
-import { useNotificationContext } from '@core/contexts/NotificationContext';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import {NavArrowLeft, Bell, BellOff} from 'iconoir-react-native';
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  borderRadius,
+} from '@core/constants';
+import {useNotificationContext} from '@core/contexts/NotificationContext';
+import {format} from 'date-fns';
+import {tr} from 'date-fns/locale';
 
 interface NotificationItemProps {
   notification: any;
   onPress: () => void;
 }
 
-const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPress }) => {
+const NotificationItem: React.FC<NotificationItemProps> = ({
+  notification,
+  onPress,
+}) => {
   const isUnread = !notification.read_at;
-  
+
   // Bildirim türüne göre emoji seç
   const getTypeEmoji = (type: string) => {
     switch (type) {
@@ -54,12 +63,13 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
     <TouchableOpacity
       style={[styles.notificationItem, isUnread && styles.unreadItem]}
       onPress={onPress}
-      activeOpacity={0.7}
-    >
+      activeOpacity={0.7}>
       <View style={styles.notificationIcon}>
-        <Text style={styles.notificationEmoji}>{getTypeEmoji(notification.type)}</Text>
+        <Text style={styles.notificationEmoji}>
+          {getTypeEmoji(notification.type)}
+        </Text>
       </View>
-      
+
       <View style={styles.notificationContent}>
         <Text style={[styles.notificationTitle, isUnread && styles.unreadText]}>
           {notification.title}
@@ -68,7 +78,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
           {notification.body}
         </Text>
         <Text style={styles.notificationTime}>
-          {format(new Date(notification.created_at), 'dd MMM yyyy, HH:mm', { locale: tr })}
+          {format(new Date(notification.created_at), 'dd MMM yyyy, HH:mm', {
+            locale: tr,
+          })}
         </Text>
       </View>
 
@@ -101,7 +113,10 @@ export const NotificationsScreen: React.FC = () => {
     // Bildirim data'sına göre yönlendirme yap
     if (notification.data?.orderId) {
       // Sipariş detay sayfasına git
-      navigation.navigate('OrderDetail' as never, { orderId: notification.data.orderId } as never);
+      navigation.navigate(
+        'OrderDetail' as never,
+        {orderId: notification.data.orderId} as never,
+      );
     }
   };
 
@@ -131,8 +146,7 @@ export const NotificationsScreen: React.FC = () => {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
+          style={styles.backButton}>
           <NavArrowLeft
             width={24}
             height={24}
@@ -140,7 +154,7 @@ export const NotificationsScreen: React.FC = () => {
             strokeWidth={2}
           />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Bildirimler</Text>
           {unreadCount > 0 && (
@@ -160,8 +174,8 @@ export const NotificationsScreen: React.FC = () => {
       {/* Notifications List */}
       <FlatList
         data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        keyExtractor={item => item.id}
+        renderItem={({item}) => (
           <NotificationItem
             notification={item}
             onPress={() => handleNotificationPress(item)}
@@ -315,13 +329,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-
-
-
-
-
-
-
 
 

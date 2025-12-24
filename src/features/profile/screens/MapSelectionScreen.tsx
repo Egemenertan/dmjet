@@ -88,6 +88,8 @@ export const MapSelectionScreen: React.FC = () => {
   const [countryCode, setCountryCode] = useState('+90');
   const [userHasPhone, setUserHasPhone] = useState(false);
   const [isLocationInDeliveryArea, setIsLocationInDeliveryArea] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
+  const [isMapReady, setIsMapReady] = useState(false); // Harita hazır mı kontrolü
+  const isInitialLoadRef = useRef(true); // İlk yükleme kontrolü
 
   // Profile'dan telefon bilgisini yükle
   useEffect(() => {
@@ -154,7 +156,12 @@ export const MapSelectionScreen: React.FC = () => {
         .single();
 
       if (error) {
-        console.error('Profil yükleme hatası:', error);
+        // PGRST116 = no rows found, this is expected for new users or RLS not ready yet
+        if (error.code === 'PGRST116') {
+          console.warn('⚠️ Profil henüz yüklenmedi (RLS hazır değil veya profil oluşturulmamış)');
+        } else {
+          console.error('❌ Profil yükleme hatası:', error);
+        }
         return false; // Kayıtlı konum yok
       }
 
@@ -177,10 +184,17 @@ export const MapSelectionScreen: React.FC = () => {
           setSearchQuery(data.address || '');
           setAddressDetails(data.address_details || '');
           
-          // Kayıtlı konum için hemen hizmet alanı kontrolü yap
-          const inDeliveryArea = isInDeliveryArea(locationData);
-          // Debug log silindi - production'da gereksiz
-          setIsLocationInDeliveryArea(inDeliveryArea);
+          // Kayıtlı konum için hizmet alanı kontrolü - harita hazır olduktan sonra
+          const checkDeliveryArea = () => {
+            if (isMapReady && !isInitialLoadRef.current) {
+              const inDeliveryArea = isInDeliveryArea(locationData);
+              setIsLocationInDeliveryArea(inDeliveryArea);
+            } else {
+              // Harita henüz hazır değilse tekrar dene
+              setTimeout(checkDeliveryArea, 200);
+            }
+          };
+          setTimeout(checkDeliveryArea, 500);
           
           return true; // Kayıtlı konum var
         } else {
@@ -262,12 +276,17 @@ export const MapSelectionScreen: React.FC = () => {
           mapRef.current.animateToRegion(userLocation, 1000);
         }
         
-        // GPS konumu için hizmet alanı kontrolü
-        setTimeout(() => {
-          const inDeliveryArea = isInDeliveryArea(locationData);
-          // Debug log silindi - production'da gereksiz
-          setIsLocationInDeliveryArea(inDeliveryArea);
-        }, isManual ? 1100 : 300); // Manuel ise animasyon süresini bekle
+        // GPS konumu için hizmet alanı kontrolü - harita hazır olduktan sonra
+        const checkDeliveryArea = () => {
+          if (isMapReady && !isInitialLoadRef.current) {
+            const inDeliveryArea = isInDeliveryArea(locationData);
+            setIsLocationInDeliveryArea(inDeliveryArea);
+          } else {
+            // Harita henüz hazır değilse tekrar dene
+            setTimeout(checkDeliveryArea, 200);
+          }
+        };
+        setTimeout(checkDeliveryArea, isManual ? 1100 : 500);
         
         // Debug log silindi - production'da gereksiz
       } else {
@@ -295,8 +314,23 @@ export const MapSelectionScreen: React.FC = () => {
     }
   };
 
+  // Harita hazır olduğunda
+  const handleMapReady = () => {
+    setIsMapReady(true);
+    // Harita hazır olduktan sonra kısa bir gecikme ile ilk kontrolü yap
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 500);
+  };
+
   // Harita hareket ettiğinde merkez konumu güncelle
   const handleRegionChangeComplete = (newRegion: Region) => {
+    // İlk yükleme sırasında veya harita hazır değilse kontrolü atla
+    if (isInitialLoadRef.current || !isMapReady) {
+      setRegion(newRegion);
+      return;
+    }
+
     setRegion(newRegion);
     const newLocation = {
       latitude: newRegion.latitude,
@@ -332,11 +366,16 @@ export const MapSelectionScreen: React.FC = () => {
     mapRef.current?.animateToRegion(newRegion, 500);
     
     // Teslimat alanı kontrolü - harita animasyonu bittikten sonra
-    setTimeout(() => {
-      const inDeliveryArea = isInDeliveryArea(location);
-      // Debug log silindi - production'da gereksiz
-      setIsLocationInDeliveryArea(inDeliveryArea);
-    }, 600); // Animasyon süresi + 100ms
+    const checkDeliveryArea = () => {
+      if (isMapReady && !isInitialLoadRef.current) {
+        const inDeliveryArea = isInDeliveryArea(location);
+        setIsLocationInDeliveryArea(inDeliveryArea);
+      } else {
+        // Harita henüz hazır değilse tekrar dene
+        setTimeout(checkDeliveryArea, 200);
+      }
+    };
+    setTimeout(checkDeliveryArea, 600); // Animasyon süresi + 100ms
   };
 
   // Konum onaylama
@@ -558,6 +597,7 @@ export const MapSelectionScreen: React.FC = () => {
                     provider={PROVIDER_GOOGLE}
                     style={styles.map}
                     initialRegion={region}
+                    onMapReady={handleMapReady}
                     onRegionChangeComplete={handleRegionChangeComplete}
                     mapType="standard"
                     showsUserLocation
@@ -751,9 +791,11 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     padding: spacing.md,
+    paddingBottom: spacing.xl * 2, // Modal için ekstra alan bırak
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    zIndex: 1000, // Modal'ın görünmesi için z-index ekle
   },
   myLocationButton: {
     flexDirection: 'row',

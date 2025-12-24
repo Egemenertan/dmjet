@@ -179,7 +179,6 @@ export const testSupabaseConnection = async () => {
       return { success: false, error: error.message };
     }
     
-    console.log('✅ Supabase connection test successful');
     return { success: true, data };
   } catch (error: any) {
     console.error('❌ Supabase connection test error:', error);

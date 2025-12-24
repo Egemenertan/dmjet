@@ -1,9 +1,10 @@
 /**
  * BannerCard Component
  * Modern banner kartı - carousel için
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, {memo} from 'react';
 import {View, Image, StyleSheet, TouchableOpacity, Dimensions} from 'react-native';
 import {colors, borderRadius, spacing} from '@core/constants';
 
@@ -18,7 +19,7 @@ interface BannerCardProps {
   onPress?: () => void;
 }
 
-export const BannerCard: React.FC<BannerCardProps> = ({
+export const BannerCard: React.FC<BannerCardProps> = memo(({
   image_url,
   image_source,
   onPress,
@@ -39,26 +40,24 @@ export const BannerCard: React.FC<BannerCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.image_url === nextProps.image_url &&
+    prevProps.image_source === nextProps.image_source
+  );
+});
 
 const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     marginHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
+   
     overflow: 'hidden',
-    backgroundColor: colors.surface,
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    // Shadow for Android
-    elevation: 6,
+    
+   
   },
   imageContainer: {
     width: '100%',
@@ -69,10 +68,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
+ 
 });
 
 

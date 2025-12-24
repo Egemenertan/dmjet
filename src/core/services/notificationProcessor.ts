@@ -63,11 +63,6 @@ class NotificationProcessor {
         total: data?.total || pendingCount,
       };
 
-      // Sadece başarılı gönderimde log
-      if (result.sent > 0) {
-        console.log(`✅ ${result.sent} bildirim gönderildi`);
-      }
-
       return result;
     } catch (error: any) {
       console.error('❌ Bildirim işleme hatası:', error.message);

@@ -7,6 +7,8 @@ import {supabase} from '@core/services/supabase';
 import {Database} from '@core/types/database.types';
 import {sanitizeSearchQuery, calculateMultiWordMatchScore, normalizeTurkishChars, normalizeSearchQuery} from '@core/utils/sanitize';
 import {getCategoryImageUrl, getProductImageUrl, api} from '@core/utils';
+import {calculateFinalPrice} from '@core/utils/priceCalculator';
+import {getDeliverySettings} from '@features/cart/services/deliveryService';
 
 type Stock = Database['public']['Tables']['stocks']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -15,10 +17,15 @@ export const productsService = {
   /**
    * Get products from stocks table with enhanced error handling
    * Sadece is_active = true olan ürünleri getir
+   * Fiyatlar kar marjı ile hesaplanır
    */
   async getProducts(language: string = 'tr', limit: number = 20) {
     try {
       // Debug log silindi - production'da gereksiz
+      
+      // Kar marjını al
+      const deliverySettings = await getDeliverySettings();
+      const profitMargin = deliverySettings?.profit_margin || 10;
       
       const {data, error} = await supabase
         .from('stocks')
@@ -51,11 +58,12 @@ export const productsService = {
 
       // Debug log silindi - production'da gereksiz
       
-      // stocks verisini products formatına dönüştür
+      // stocks verisini products formatına dönüştür ve kar marjını uygula
       const products = data.map(stock => ({
         id: stock.stock_id.toString(),
         name: stock.name || '',
-        price: stock.sell_price || 0,
+        price: calculateFinalPrice(stock.sell_price || 0, profitMargin), // Kar marjı eklenmiş fiyat
+        sell_price: stock.sell_price || 0, // Orijinal satış fiyatı
         image_url: getProductImageUrl(stock.image_url),
         barcode: stock.barcode,
         stock: stock.balance || 0,
@@ -84,6 +92,10 @@ export const productsService = {
    * Get product by ID from stocks table
    */
   async getProductById(id: string, language: string = 'tr') {
+    // Kar marjını al
+    const deliverySettings = await getDeliverySettings();
+    const profitMargin = deliverySettings?.profit_margin || 10;
+    
     const {data, error} = await supabase
       .from('stocks')
       .select(`
@@ -104,11 +116,12 @@ export const productsService = {
 
     if (error) throw error;
     
-    // stocks verisini products formatına dönüştür
+    // stocks verisini products formatına dönüştür ve kar marjını uygula
     return data ? {
       id: data.stock_id.toString(),
       name: data.name || '',
-      price: data.sell_price || 0,
+      price: calculateFinalPrice(data.sell_price || 0, profitMargin), // Kar marjı eklenmiş fiyat
+      sell_price: data.sell_price || 0, // Orijinal satış fiyatı
       image_url: getProductImageUrl(data.image_url),
       barcode: data.barcode,
       stock: data.balance || 0,
@@ -208,6 +221,10 @@ export const productsService = {
       return [];
     }
 
+    // Kar marjını al
+    const deliverySettings = await getDeliverySettings();
+    const profitMargin = deliverySettings?.profit_margin || 10;
+
     // Tüm aktif ürünleri getir
     const {data, error} = await supabase
       .from('stocks')
@@ -253,11 +270,12 @@ export const productsService = {
       .filter(stock => stock.matchScore >= 40) // Minimum %40 eşleşme
       .sort((a, b) => b.matchScore - a.matchScore); // Skora göre sırala
     
-    // stocks verisini products formatına dönüştür
+    // stocks verisini products formatına dönüştür ve kar marjını uygula
     return scoredProducts.map(stock => ({
       id: stock.stock_id.toString(),
       name: stock.name || '',
-      price: stock.sell_price || 0,
+      price: calculateFinalPrice(stock.sell_price || 0, profitMargin), // Kar marjı eklenmiş fiyat
+      sell_price: stock.sell_price || 0, // Orijinal satış fiyatı
       image_url: getProductImageUrl(stock.image_url),
       barcode: stock.barcode,
       stock: stock.balance || 0,
@@ -272,6 +290,10 @@ export const productsService = {
    * Get products by category from stocks table
    */
   async getProductsByCategory(categoryId: string, language: string = 'tr') {
+    // Kar marjını al
+    const deliverySettings = await getDeliverySettings();
+    const profitMargin = deliverySettings?.profit_margin || 10;
+    
     const {data, error} = await supabase
       .from('stocks')
       .select(`
@@ -289,11 +311,12 @@ export const productsService = {
 
     if (error) throw error;
     
-    // stocks verisini products formatına dönüştür
+    // stocks verisini products formatına dönüştür ve kar marjını uygula
     return data?.map(stock => ({
       id: stock.stock_id.toString(),
       name: stock.name || '',
-      price: stock.sell_price || 0,
+      price: calculateFinalPrice(stock.sell_price || 0, profitMargin), // Kar marjı eklenmiş fiyat
+      sell_price: stock.sell_price || 0, // Orijinal satış fiyatı
       image_url: getProductImageUrl(stock.image_url),
       barcode: stock.barcode,
       stock: stock.balance || 0,
@@ -390,6 +413,10 @@ export const productsService = {
     page: number = 0,
     pageSize: number = 20,
   ) {
+    // Kar marjını al
+    const deliverySettings = await getDeliverySettings();
+    const profitMargin = deliverySettings?.profit_margin || 10;
+    
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
@@ -421,11 +448,12 @@ export const productsService = {
     const {data, error, count} = await query;
     if (error) throw error;
     
-    // stocks verisini products formatına dönüştür
+    // stocks verisini products formatına dönüştür ve kar marjını uygula
     const productsWithImages = data?.map(stock => ({
       id: stock.stock_id.toString(),
       name: stock.name || '',
-      price: stock.sell_price || 0,
+      price: calculateFinalPrice(stock.sell_price || 0, profitMargin), // Kar marjı eklenmiş fiyat
+      sell_price: stock.sell_price || 0, // Orijinal satış fiyatı
       image_url: getProductImageUrl(stock.image_url),
       barcode: stock.barcode,
       stock: stock.balance || 0,

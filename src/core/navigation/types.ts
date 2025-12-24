@@ -28,6 +28,7 @@ export type MainStackParamList = {
   MapSelection: undefined;
   Cart: undefined;
   SearchResults: {query: string};
+  Legal: undefined;
 };
 
 // Bottom Tabs

@@ -20,6 +20,7 @@ import {
   CreditCard,
   Camera,
   Language,
+  BookStack,
 } from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {Button, Input} from '@shared/ui';
@@ -31,6 +32,7 @@ import {supabase} from '@core/services/supabase';
 import {profileService} from '../services/profileService';
 import {useTabNavigation} from '@core/navigation/TabContext';
 import {EditProfileModal} from '../components/EditProfileModal';
+import {LegalScreen} from './LegalScreen';
 
 interface UserLocation {
   latitude: number;
@@ -105,13 +107,6 @@ export const ProfileScreen: React.FC = () => {
         addressDetails: profile.address_details || undefined,
       } : null);
       
-      setProfileData({
-        full_name: profile.full_name,
-        phone: profile.phone,
-        country_code: profile.country_code || '+90',
-        avatar_url: profile.avatar_url,
-      });
-      
       if (profile.aile_karti) {
         setAileKarti(String(profile.aile_karti));
       }
@@ -149,7 +144,12 @@ export const ProfileScreen: React.FC = () => {
       }
 
       if (error) {
-        console.error('Profil yükleme hatası:', error);
+        // PGRST116 = no rows found, this is expected for new users or RLS not ready yet
+        if (error.code === 'PGRST116') {
+          console.warn('⚠️ Profil henüz yüklenmedi (RLS hazır değil veya profil oluşturulmamış)');
+        } else {
+          console.error('❌ Profil yükleme hatası:', error);
+        }
         // Hata olsa bile loading'i kapat
         setLoadingLocation(false);
         return;
@@ -187,7 +187,7 @@ export const ProfileScreen: React.FC = () => {
         // AuthStore'u da güncelle (cache için)
         setProfile({
           id: user.id,
-          email: user.email,
+          email: user.email || null,
           full_name: data.full_name,
           phone: data.phone,
           country_code: data.country_code,
@@ -289,8 +289,6 @@ export const ProfileScreen: React.FC = () => {
       
       // 6. Kullanıcıya bilgi ver
       Alert.alert(t('common.done'), t('profile.languageChanged'));
-      
-      console.log('✅ Language changed to:', languageCode);
     } catch (error) {
       console.error('❌ Error changing language:', error);
       Alert.alert(t('common.error'), 'Dil değiştirilemedi');
@@ -729,6 +727,24 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={styles.languageLabel}>{t('profile.selectLanguage')}</Text>
                 <Text style={styles.languageValue}>{getLanguageName(currentLanguage)}</Text>
               </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Legal Documents Section */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => navigation.navigate('Legal' as never)}
+          >
+            <View style={styles.actionButtonContent}>
+              <BookStack
+                width={20}
+                height={20}
+                color={colors.text.primary}
+                strokeWidth={2}
+              />
+              <Text style={styles.actionButtonText}>{t('legal.title', 'Yasal Belgeler')}</Text>
             </View>
           </TouchableOpacity>
         </View>

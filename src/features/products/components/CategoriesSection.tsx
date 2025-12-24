@@ -1,59 +1,44 @@
 /**
  * CategoriesSection Component
  * Kategorileri yatay scroll ile gösteren section
+ * Optimized: Kategoriler prop olarak alınır, gereksiz query yok
  */
 
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity} from 'react-native';
-import {useQuery} from '@tanstack/react-query';
-import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
-import {productsService} from '../services/productsService';
+import React, {useState, useMemo, memo} from 'react';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
+import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {CategoryCard} from './CategoryCard';
 import {AllCategoriesModal} from './AllCategoriesModal';
-import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
 
 interface CategoriesSectionProps {
+  categories: any[]; // HomeScreen'den prop olarak gelir
   onCategoryPress?: (categoryId: string, categoryName: string) => void;
 }
 
-export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
+export const CategoriesSection: React.FC<CategoriesSectionProps> = memo(({
+  categories,
   onCategoryPress,
 }) => {
   const {t} = useTranslation();
-  const {language} = useAppStore();
   const [showAllModal, setShowAllModal] = useState(false);
 
-  const {data: categories, isLoading} = useQuery({
-    queryKey: ['categories', language],
-    queryFn: () => productsService.getCategories(language),
-  });
+  // Kategorileri memoize et - sadece categories değiştiğinde yeniden hesapla
+  const processedCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+    
+    return categories.map((category: any) => ({
+      id: category.id,
+      name: category.name,
+      image_url: category.image_url,
+      original_name: category.original_name,
+      has_translation: category.has_translation,
+    }));
+  }, [categories]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>{t('home.categories')}</Text>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      </View>
-    );
-  }
-
-  if (!categories || categories.length === 0) {
+  if (!processedCategories || processedCategories.length === 0) {
     return null;
   }
-
-  // Kategorileri hazırla
-  // Service katmanında çeviriler zaten uygulanmış durumda
-  // category.name otomatik olarak çevrilmiş veya Türkçe fallback içeriyor
-  const processedCategories = categories?.map((category: any) => ({
-    id: category.id,
-    name: category.name, // Zaten çevrilmiş veya Türkçe fallback
-    image_url: category.image_url,
-    original_name: category.original_name, // Debug için orijinal isim
-    has_translation: category.has_translation, // Çeviri var mı flag'i
-  })) || [];
 
   return (
     <View style={styles.container}>
@@ -70,7 +55,12 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={styles.scrollContent}
+        // Performans optimizasyonları
+        removeClippedSubviews={true}
+        decelerationRate="fast"
+        snapToInterval={86} // 70 (width) + 16 (marginRight)
+        snapToAlignment="start">
         {processedCategories.map((category) => (
           <CategoryCard
             key={category.id}
@@ -99,7 +89,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

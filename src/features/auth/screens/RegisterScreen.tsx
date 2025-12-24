@@ -39,8 +39,37 @@ export const RegisterScreen: React.FC = () => {
     try {
       setLoading(true);
       await authService.register({email, password, fullName});
-      Alert.alert(t('common.done'), t('auth.registerSuccess'));
-      navigation.navigate('Login' as never);
+      
+      // Tüm Auth modal stack'ini kapat (Welcome, Login, Register)
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.goBack();
+      }
+      
+      // Eğer Checkout'tan geldiyse MapSelection'a yönlendir
+      if (returnTo === 'Checkout') {
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate('Main', {
+            screen: 'MapSelection'
+          });
+          Alert.alert(t('common.done'), t('auth.registerSuccess'));
+        }, 400);
+      } else if (returnTo) {
+        // Diğer returnTo durumları için o sayfaya yönlendir
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate('Main', {
+            screen: returnTo
+          });
+          Alert.alert(t('common.done'), t('auth.registerSuccess'));
+        }, 400);
+      } else {
+        // returnTo yoksa sadece başarı mesajı göster
+        setTimeout(() => {
+          Alert.alert(t('common.done'), t('auth.registerSuccess'));
+        }, 400);
+      }
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.registerError'));
     } finally {
@@ -53,21 +82,35 @@ export const RegisterScreen: React.FC = () => {
       setGoogleLoading(true);
       await authService.loginWithGoogle();
       
-      // Auth modal'ını kapat
-      navigation.goBack();
+      // Tüm Auth modal stack'ini kapat (Welcome, Login, Register)
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.goBack();
+      }
       
-      // Eğer returnTo parametresi varsa, o sayfaya yönlendir
-      if (returnTo) {
+      // Eğer Checkout'tan geldiyse MapSelection'a yönlendir
+      if (returnTo === 'Checkout') {
         setTimeout(() => {
           // @ts-ignore - Navigation type issue with nested navigators
-          navigation.navigate(returnTo as never);
+          navigation.navigate('Main', {
+            screen: 'MapSelection'
+          });
           Alert.alert(t('common.done'), t('auth.loginSuccess'));
-        }, 300);
+        }, 400);
+      } else if (returnTo) {
+        // Diğer returnTo durumları için o sayfaya yönlendir
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate('Main', {
+            screen: returnTo
+          });
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 400);
       } else {
-        // Sadece başarı mesajı göster
+        // returnTo yoksa sadece başarı mesajı göster
         setTimeout(() => {
           Alert.alert(t('common.done'), t('auth.loginSuccess'));
-        }, 300);
+        }, 400);
       }
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
@@ -150,7 +193,7 @@ export const RegisterScreen: React.FC = () => {
 
         <Button
           title={t('auth.alreadyHaveAccount')}
-          onPress={() => navigation.navigate('Login' as never)}
+          onPress={() => navigation.navigate('Login' as never, returnTo ? {returnTo} : undefined)}
           variant="ghost"
           fullWidth
         />

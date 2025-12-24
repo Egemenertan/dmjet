@@ -288,6 +288,23 @@
     "noteMessage": "Bu saatler dışında verilen siparişler bir sonraki çalışma günü işleme alınacaktır.",
     "serviceOutside": "Hizmet Dışı",
     "hours": "Çalışma Saatleri"
+  },
+  "legal": {
+    "title": "Yasal Belgeler",
+    "privacyPolicy": "Gizlilik Politikası",
+    "termsOfService": "Kullanım Şartları",
+    "viewOnWebsite": "Web sitesinde görüntüle",
+    "linkError": "Bu bağlantı açılamıyor"
+  },
+  "ageVerification": {
+    "title": "Yaş Doğrulaması",
+    "description": "Uygulamamızda alkol ve tütün ürünleri satışı yapılmaktadır. Devam etmek için 18 yaşından büyük olmalısınız.",
+    "question": "18 yaşından büyük müsünüz?",
+    "yes": "Evet",
+    "no": "Hayır",
+    "legal": "Bu uygulamayı kullanarak 18 yaşından büyük olduğunuzu beyan etmiş olursunuz.",
+    "restrictedTitle": "Erişim Kısıtlı",
+    "restrictedMessage": "Üzgünüz, bu uygulama 18 yaşından küçük kullanıcılar için uygun değildir."
   }
 }
 

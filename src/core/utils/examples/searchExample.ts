@@ -10,10 +10,22 @@ import {calculateMatchScore, filterAndSortByMatch} from '../sanitize';
 // ============================================
 
 console.log('=== ÖRNEK 1: Skor Hesaplama ===');
-console.log('bakım -> Kişisel Bakım:', calculateMatchScore('bakım', 'Kişisel Bakım')); // 85
-console.log('kişisel -> Kişisel Bakım:', calculateMatchScore('kişisel', 'Kişisel Bakım')); // 85
-console.log('bak -> Kişisel Bakım:', calculateMatchScore('bak', 'Kişisel Bakım')); // 75
-console.log('bakim -> Kişisel Bakım:', calculateMatchScore('bakim', 'Kişisel Bakım')); // 85 (Türkçe karakter duyarsız)
+console.log(
+  'bakım -> Kişisel Bakım:',
+  calculateMatchScore('bakım', 'Kişisel Bakım'),
+); // 85
+console.log(
+  'kişisel -> Kişisel Bakım:',
+  calculateMatchScore('kişisel', 'Kişisel Bakım'),
+); // 85
+console.log(
+  'bak -> Kişisel Bakım:',
+  calculateMatchScore('bak', 'Kişisel Bakım'),
+); // 75
+console.log(
+  'bakim -> Kişisel Bakım:',
+  calculateMatchScore('bakim', 'Kişisel Bakım'),
+); // 85 (Türkçe karakter duyarsız)
 
 // ============================================
 // ÖRNEK 2: Kategori Filtreleme
@@ -35,8 +47,8 @@ const categories = [
 const bakimResults = filterAndSortByMatch(
   'bakım',
   categories,
-  (cat) => cat.name,
-  50
+  cat => cat.name,
+  50,
 );
 
 console.log('\n"bakım" araması sonuçları:');
@@ -48,8 +60,8 @@ bakimResults.forEach((result, index) => {
 const kisiselResults = filterAndSortByMatch(
   'kişisel',
   categories,
-  (cat) => cat.name,
-  50
+  cat => cat.name,
+  50,
 );
 
 console.log('\n"kişisel" araması sonuçları:');
@@ -61,8 +73,8 @@ kisiselResults.forEach((result, index) => {
 const bebekResults = filterAndSortByMatch(
   'bebek',
   categories,
-  (cat) => cat.name,
-  50
+  cat => cat.name,
+  50,
 );
 
 console.log('\n"bebek" araması sonuçları:');
@@ -114,8 +126,8 @@ const products: Product[] = [
 const matchingCategories = filterAndSortByMatch(
   'bakım',
   categories,
-  (cat) => cat.name,
-  50
+  cat => cat.name,
+  50,
 );
 
 console.log('\n"bakım" araması için bulunan kategoriler:');
@@ -125,8 +137,8 @@ matchingCategories.forEach(cat => {
 
 // Bu kategorilerdeki ürünleri filtrele
 const categoryNames = matchingCategories.map(c => c.name);
-const matchingProducts = products.filter(p => 
-  categoryNames.includes(p.category)
+const matchingProducts = products.filter(p =>
+  categoryNames.includes(p.category),
 );
 
 console.log('\nBu kategorilerdeki ürünler:');
@@ -148,8 +160,8 @@ console.log(`\n"${testQuery}" araması için farklı minimum skorlar:`);
   const results = filterAndSortByMatch(
     testQuery,
     categories,
-    (cat) => cat.name,
-    minScore
+    cat => cat.name,
+    minScore,
   );
   console.log(`\nMinimum Skor: ${minScore}`);
   console.log(`Sonuç Sayısı: ${results.length}`);
@@ -228,4 +240,5 @@ Sonuç Sayısı: 3
   - Ev Bakım (75)
   - Bebek Bakımı (60)
 */
+
 

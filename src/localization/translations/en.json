@@ -288,6 +288,23 @@
     "noteMessage": "Orders placed outside these hours will be processed on the next business day.",
     "serviceOutside": "Out of Service",
     "hours": "Working Hours"
+  },
+  "legal": {
+    "title": "Legal Documents",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "viewOnWebsite": "View on website",
+    "linkError": "This link cannot be opened"
+  },
+  "ageVerification": {
+    "title": "Age Verification",
+    "description": "Our app sells alcohol and tobacco products. You must be 18 years or older to continue.",
+    "question": "Are you 18 years or older?",
+    "yes": "Yes",
+    "no": "No",
+    "legal": "By using this app, you confirm that you are 18 years or older.",
+    "restrictedTitle": "Access Restricted",
+    "restrictedMessage": "Sorry, this app is not suitable for users under 18 years old."
   }
 }
 

@@ -39,21 +39,35 @@ export const LoginScreen: React.FC = () => {
       setLoading(true);
       await authService.login({email, password});
       
-      // Auth modal'ını kapat
-      navigation.goBack();
+      // Tüm Auth modal stack'ini kapat (Welcome, Login, Register)
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.goBack();
+      }
       
-      // Eğer returnTo parametresi varsa, o sayfaya yönlendir
-      if (returnTo) {
+      // Eğer Checkout'tan geldiyse MapSelection'a yönlendir
+      if (returnTo === 'Checkout') {
         setTimeout(() => {
           // @ts-ignore - Navigation type issue with nested navigators
-          navigation.navigate(returnTo as never);
+          navigation.navigate('Main', {
+            screen: 'MapSelection'
+          });
           Alert.alert(t('common.done'), t('auth.loginSuccess'));
-        }, 300);
+        }, 400);
+      } else if (returnTo) {
+        // Diğer returnTo durumları için o sayfaya yönlendir
+        setTimeout(() => {
+          // @ts-ignore - Navigation type issue with nested navigators
+          navigation.navigate('Main', {
+            screen: returnTo
+          });
+          Alert.alert(t('common.done'), t('auth.loginSuccess'));
+        }, 400);
       } else {
-        // Sadece başarı mesajı göster
+        // returnTo yoksa sadece başarı mesajı göster
         setTimeout(() => {
           Alert.alert(t('common.done'), t('auth.loginSuccess'));
-        }, 300);
+        }, 400);
       }
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
@@ -65,43 +79,46 @@ export const LoginScreen: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       setGoogleLoading(true);
-      console.log('🚀 Starting Google login from LoginScreen...');
       
       const result = await authService.loginWithGoogle();
       
       if (result) {
-        console.log('✅ Google login successful, navigating...');
+        // Tüm Auth modal stack'ini kapat (Welcome, Login, Register)
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.goBack();
+        }
         
-        // Wait a bit for auth state to update
-        setTimeout(() => {
-          // Auth modal'ını kapat ve ana sayfaya yönlendir
-          navigation.goBack();
-          
-          // Eğer returnTo parametresi varsa, o sayfaya yönlendir
-          if (returnTo) {
-            setTimeout(() => {
-              console.log('📍 Navigating to returnTo:', returnTo);
-              // @ts-ignore - Navigation type issue with nested navigators
-              navigation.navigate(returnTo as never);
-            }, 500);
-          } else {
-            console.log('📍 No returnTo, staying on current screen');
-          }
-          
-          // Success message
+        // Eğer Checkout'tan geldiyse MapSelection'a yönlendir
+        if (returnTo === 'Checkout') {
+          setTimeout(() => {
+            // @ts-ignore - Navigation type issue with nested navigators
+            navigation.navigate('Main', {
+              screen: 'MapSelection'
+            });
+            Alert.alert(t('common.done'), t('auth.loginSuccess'));
+          }, 400);
+        } else if (returnTo) {
+          // Diğer returnTo durumları için o sayfaya yönlendir
+          setTimeout(() => {
+            // @ts-ignore - Navigation type issue with nested navigators
+            navigation.navigate('Main', {
+              screen: returnTo
+            });
+            Alert.alert(t('common.done'), t('auth.loginSuccess'));
+          }, 400);
+        } else {
+          // returnTo yoksa sadece başarı mesajı göster
           setTimeout(() => {
             Alert.alert(t('common.done'), t('auth.loginSuccess'));
-          }, 800);
-        }, 1000);
+          }, 400);
+        }
       }
     } catch (error: any) {
       console.error('❌ Google login error in LoginScreen:', error);
       Alert.alert(t('common.error'), error.message || t('auth.loginError'));
     } finally {
-      // Clear loading state after a delay to prevent UI flicker
-      setTimeout(() => {
-        setGoogleLoading(false);
-      }, 1500);
+      setGoogleLoading(false);
     }
   };
 
@@ -172,7 +189,7 @@ export const LoginScreen: React.FC = () => {
 
         <Button
           title={t('auth.dontHaveAccount')}
-          onPress={() => navigation.navigate('Register' as never)}
+          onPress={() => navigation.navigate('Register' as never, returnTo ? {returnTo} : undefined)}
           variant="ghost"
           fullWidth
           style={styles.registerButton}

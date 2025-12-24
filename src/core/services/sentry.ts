@@ -1,26 +1,80 @@
 /**
  * Sentry Error Tracking Service
- * 
+ *
  * Centralized error tracking and monitoring
- * 
+ *
  * Features:
  * - Automatic error capture
  * - User context tracking
  * - Breadcrumbs for debugging
  * - Performance monitoring
  * - Release tracking
- * 
- * NOTE: Currently disabled for build compatibility
- * Will be enabled in future updates
  */
+
+import * as Sentry from '@sentry/react-native';
+import {env} from '@core/config/env';
+import Constants from 'expo-constants';
 
 /**
  * Initialize Sentry
  * Call this once at app startup
  */
 export const initSentry = () => {
-  // Sentry temporarily disabled for build compatibility
-  console.log('Sentry: Disabled for build compatibility');
+  // Only initialize if DSN is provided
+  if (!env.sentry.dsn) {
+    if (__DEV__) {
+      console.warn('⚠️ Sentry DSN not configured. Error tracking is disabled.');
+    }
+    return;
+  }
+
+  try {
+    Sentry.init({
+      dsn: env.sentry.dsn,
+      // Enable automatic session tracking
+      enableAutoSessionTracking: true,
+      // Session timeout in milliseconds
+      sessionTrackingIntervalMillis: 30000,
+      // Enable automatic breadcrumbs
+      enableAutoPerformanceTracing: true,
+      // Trace sampling rate (0.0 to 1.0)
+      tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+      // Environment
+      environment: __DEV__ ? 'development' : 'production',
+      // Release version
+      release: `${Constants.expoConfig?.slug}@${Constants.expoConfig?.version}`,
+      // Distribution
+      dist: Constants.expoConfig?.version,
+      // Enable native crash reporting
+      enableNative: true,
+      // Enable native crash reporting for NDK
+      enableNativeCrashHandling: true,
+      // Attach stack trace to messages
+      attachStacktrace: true,
+      // Maximum number of breadcrumbs
+      maxBreadcrumbs: 100,
+      // Before send hook - filter sensitive data
+      beforeSend(event) {
+        // Remove sensitive data from event
+        if (event.request?.headers) {
+          delete event.request.headers['Authorization'];
+          delete event.request.headers['Cookie'];
+        }
+        return event;
+      },
+      // Integrations
+      integrations: [
+        new Sentry.ReactNativeTracing({
+          // Tracing options
+          tracingOrigins: ['localhost', /^\//],
+          // Enable automatic transaction tracking
+          routingInstrumentation: new Sentry.ReactNavigationInstrumentation(),
+        }),
+      ],
+    });
+  } catch (error) {
+    console.error('❌ Failed to initialize Sentry:', error);
+  }
 };
 
 /**
@@ -32,14 +86,30 @@ export const setUser = (user: {
   username?: string;
   fullName?: string;
 }) => {
-  // Stub function
+  try {
+    Sentry.setUser({
+      id: user.id,
+      email: user.email,
+      username: user.username || user.fullName,
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to set Sentry user:', error);
+    }
+  }
 };
 
 /**
  * Clear user context (on logout)
  */
 export const clearUser = () => {
-  // Stub function
+  try {
+    Sentry.setUser(null);
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to clear Sentry user:', error);
+    }
+  }
 };
 
 /**
@@ -48,10 +118,22 @@ export const clearUser = () => {
 export const addBreadcrumb = (
   message: string,
   category: string = 'custom',
-  level: any = 'info',
-  data?: Record<string, any>
+  level: Sentry.SeverityLevel = 'info',
+  data?: Record<string, any>,
 ) => {
-  // Stub function
+  try {
+    Sentry.addBreadcrumb({
+      message,
+      category,
+      level,
+      data,
+      timestamp: Date.now() / 1000,
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to add Sentry breadcrumb:', error);
+    }
+  }
 };
 
 /**
@@ -59,10 +141,18 @@ export const addBreadcrumb = (
  */
 export const captureException = (
   error: Error,
-  context?: Record<string, any>
+  context?: Record<string, any>,
 ) => {
-  // Log to console in development
-  if (__DEV__) {
+  try {
+    if (context) {
+      Sentry.captureException(error, {
+        contexts: {custom: context},
+      });
+    } else {
+      Sentry.captureException(error);
+    }
+  } catch (err) {
+    // Fallback to console in case Sentry fails
     console.error('Error:', error, context);
   }
 };
@@ -72,12 +162,23 @@ export const captureException = (
  */
 export const captureMessage = (
   message: string,
-  level: any = 'info',
-  context?: Record<string, any>
+  level: Sentry.SeverityLevel = 'info',
+  context?: Record<string, any>,
 ) => {
-  // Log to console in development
-  if (__DEV__) {
-    console.log('Message:', message, level, context);
+  try {
+    if (context) {
+      Sentry.captureMessage(message, {
+        level,
+        contexts: {custom: context},
+      });
+    } else {
+      Sentry.captureMessage(message, level);
+    }
+  } catch (error) {
+    // Fallback to console in case Sentry fails
+    if (__DEV__) {
+      console.log('Message:', message, level, context);
+    }
   }
 };
 
@@ -85,14 +186,26 @@ export const captureMessage = (
  * Set custom tags
  */
 export const setTag = (key: string, value: string) => {
-  // Stub function
+  try {
+    Sentry.setTag(key, value);
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to set Sentry tag:', error);
+    }
+  }
 };
 
 /**
  * Set custom context
  */
 export const setContext = (name: string, context: Record<string, any>) => {
-  // Stub function
+  try {
+    Sentry.setContext(name, context);
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to set Sentry context:', error);
+    }
+  }
 };
 
 /**
@@ -100,10 +213,20 @@ export const setContext = (name: string, context: Record<string, any>) => {
  */
 export const startTransaction = (
   name: string,
-  op: string = 'custom'
-): any => {
-  return {
-    finish: () => {},
-  };
+  op: string = 'custom',
+): Sentry.Transaction | null => {
+  try {
+    return Sentry.startTransaction({name, op});
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Failed to start Sentry transaction:', error);
+    }
+    return null;
+  }
 };
 
+/**
+ * Wrap the root component with Sentry
+ * This enables automatic error boundary and performance tracking
+ * Note: Use Sentry.wrap directly in App.tsx
+ */

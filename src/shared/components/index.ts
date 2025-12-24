@@ -13,4 +13,6 @@ export {OptimizedImage} from './OptimizedImage';
 export {LogoLoader} from './LogoLoader';
 export {WorkingHoursAlert} from './WorkingHoursAlert';
 export {WorkingHoursBanner} from './WorkingHoursBanner';
+export {SentryTestButton} from './SentryTestButton';
+export {AgeVerificationModal} from './AgeVerificationModal';
 

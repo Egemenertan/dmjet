@@ -28,11 +28,13 @@ supabase db push
 
 **Tarih:** 2025-12-20
 
-**Açıklama:** 
+**Açıklama:**
+
 - `profiles` tablosuna `aile_karti` (TEXT) kolonu eklendi
 - Bu kolon kullanıcıların aile kartı numaralarını saklamak için kullanılacak
 
 **Değişiklikler:**
+
 - ✅ `profiles` tablosuna `aile_karti` kolonu eklendi
 - ✅ TypeScript tipleri güncellendi
 - ✅ Profile service oluşturuldu
@@ -51,13 +53,5 @@ await profileService.updateFamilyCard(userId, '1234567890');
 const profile = await profileService.getProfile(userId);
 console.log(profile.aile_karti); // '1234567890'
 ```
-
-
-
-
-
-
-
-
 
 

@@ -38,7 +38,8 @@ export const authService = {
    * Login with Google OAuth
    */
   async loginWithGoogle() {
-    auth.debug('Starting Google OAuth...');
+    auth.debug('🚀 Starting Google OAuth...');
+    auth.debug('📱 Package: com.dmarjet');
 
     // Cleanup any existing sessions
     try {
@@ -47,8 +48,9 @@ export const authService = {
       // Ignore cleanup errors
     }
 
-    const redirectUrl = 'dmarjetmobile://google-auth';
-    auth.debug('Redirect URL:', redirectUrl);
+    const redirectUrl = 'dmarjet://google-auth';
+    auth.debug('🔗 Redirect URL:', redirectUrl);
+    auth.debug('⚠️  IMPORTANT: Supabase Dashboard\'da bu URL\'nin kayıtlı olduğundan emin olun!');
 
     const {data, error} = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -58,8 +60,7 @@ export const authService = {
           access_type: 'offline',
           prompt: 'select_account',
         },
-        // Use PKCE flow for better security and compatibility
-        flowType: 'pkce',
+        skipBrowserRedirect: false,
       },
     });
 
@@ -78,75 +79,96 @@ export const authService = {
       }),
     ]);
 
-    auth.debug('Browser result:', browserResult.type);
+    auth.debug('🌐 Browser result type:', browserResult.type);
 
     // Handle cancel
     if (browserResult.type === 'cancel') {
-      auth.info('Kullanıcı iptal etti');
+      auth.info('❌ Kullanıcı iptal etti');
       throw new Error('Google giriş iptal edildi');
     }
 
     // Check success
     if (browserResult.type !== 'success' || !browserResult.url) {
-      auth.error('Browser session başarısız:', browserResult.type);
+      auth.error('❌ Browser session başarısız:', browserResult.type);
+      auth.error('Browser result:', JSON.stringify(browserResult, null, 2));
       throw new Error('OAuth akışı tamamlanamadı');
     }
 
-    auth.debug('Browser OAuth başarılı, URL processing...');
+    auth.debug('✅ Browser OAuth başarılı, URL processing...');
 
     try {
       // Log the full URL for debugging
-      auth.debug('Processing OAuth URL:', browserResult.url.substring(0, 100) + '...');
+      auth.debug('🔍 Processing OAuth URL:', browserResult.url.substring(0, 100) + '...');
       
       const url = new URL(browserResult.url);
-      let params: URLSearchParams;
+      auth.debug('📋 URL Details:', {
+        protocol: url.protocol,
+        host: url.host,
+        pathname: url.pathname,
+        hasHash: !!url.hash,
+        hasSearch: !!url.search
+      });
+      
+      let params: URLSearchParams | null = null;
       let access_token: string | null = null;
       let refresh_token: string | null = null;
 
       // Try fragment first (after #)
       const fragment = url.hash.substring(1);
       if (fragment) {
-        auth.debug('Found URL fragment, parsing...');
+        auth.debug('🔑 Found URL fragment, parsing...');
         params = new URLSearchParams(fragment);
         access_token = params.get('access_token');
         refresh_token = params.get('refresh_token');
+        auth.debug('Fragment tokens:', {
+          hasAccessToken: !!access_token,
+          hasRefreshToken: !!refresh_token
+        });
       }
 
       // If no tokens in fragment, try query parameters (after ?)
       if (!access_token || !refresh_token) {
-        auth.debug('No tokens in fragment, trying query parameters...');
+        auth.debug('🔍 No tokens in fragment, trying query parameters...');
         params = new URLSearchParams(url.search);
         access_token = params.get('access_token');
         refresh_token = params.get('refresh_token');
+        auth.debug('Query tokens:', {
+          hasAccessToken: !!access_token,
+          hasRefreshToken: !!refresh_token
+        });
       }
 
       // Check for authorization code (PKCE flow)
-      if (!access_token && !refresh_token) {
+      if (!access_token && !refresh_token && params) {
         const code = params.get('code');
         if (code) {
-          auth.debug('Found authorization code, exchanging for tokens...');
+          auth.debug('🔐 Found authorization code, exchanging for tokens...');
           // Let Supabase handle the code exchange
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            auth.error('Code exchange error:', error);
+            auth.error('❌ Code exchange error:', error);
             throw new Error(`Code exchange failed: ${error.message}`);
           }
           if (data.session) {
-            auth.info('OAuth successful via code exchange!');
+            auth.info('✅ OAuth successful via code exchange!');
             return data;
           }
         }
       }
 
       if (!access_token || !refresh_token) {
-        auth.error('No tokens found in URL:', {
+        auth.error('❌ No tokens found in URL!');
+        auth.error('URL Analysis:', {
+          fullUrl: browserResult.url,
           hasFragment: !!fragment,
-          hasQuery: !!url.search
+          hasQuery: !!url.search,
+          fragmentContent: fragment ? fragment.substring(0, 50) + '...' : 'none',
+          queryContent: url.search ? url.search.substring(0, 50) + '...' : 'none'
         });
         throw new Error('OAuth tokens not found in response URL');
       }
 
-      auth.debug('Tokenlar alındı, session kuruluyor...');
+      auth.debug('🎫 Tokenlar alındı, session kuruluyor...');
 
       // Set the session with extracted tokens
       const {data: sessionData, error: sessionError} =
@@ -156,24 +178,27 @@ export const authService = {
         });
 
       if (sessionError) {
-        auth.error('Session kurulum hatası:', sessionError.message);
+        auth.error('❌ Session kurulum hatası:', sessionError.message);
+        auth.error('Session error details:', JSON.stringify(sessionError, null, 2));
         throw new Error(`Session kurulumu başarısız: ${sessionError.message}`);
       }
 
       if (!sessionData.session?.user) {
-        auth.error('Session kuruldu ama user bilgisi yok');
+        auth.error('❌ Session kuruldu ama user bilgisi yok');
+        auth.error('Session data:', JSON.stringify(sessionData, null, 2));
         throw new Error('Kullanıcı bilgileri alınamadı');
       }
 
-      auth.info('OAuth başarılı! User:', sessionData.session.user.email);
+      auth.info('✅ OAuth başarılı! User:', sessionData.session.user.email);
       
       // Wait a bit for the auth state to propagate
       await new Promise(resolve => setTimeout(resolve, 500));
       
       return sessionData;
     } catch (urlError: any) {
-      auth.error('URL processing hatası:', urlError);
-      throw new Error('OAuth response işlenemedi');
+      auth.error('❌ URL processing hatası:', urlError.message);
+      auth.error('Error stack:', urlError.stack);
+      throw new Error(`OAuth response işlenemedi: ${urlError.message}`);
     }
   },
 
@@ -200,7 +225,7 @@ export const authService = {
    */
   async resetPassword(email: string) {
     const {error} = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'dmarjetmobile://reset-password',
+      redirectTo: 'dmarjet://reset-password',
     });
 
     if (error) throw error;

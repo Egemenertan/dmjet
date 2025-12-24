@@ -1,11 +1,19 @@
 /**
  * Error Boundary Component
  * Catches JavaScript errors anywhere in the child component tree
+ * Integrated with Sentry for error tracking
  */
 
 import React, {Component, ReactNode} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  borderRadius,
+} from '@core/constants';
+import {captureException} from '@core/services/sentry';
 
 interface Props {
   children: ReactNode;
@@ -36,6 +44,12 @@ export class ErrorBoundary extends Component<Props, State> {
       componentStack: errorInfo.componentStack,
     });
 
+    // Report error to Sentry
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+    });
+
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
@@ -43,7 +57,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    console.log('🔄 ErrorBoundary retry requested');
     this.setState({hasError: false, error: null});
   };
 
@@ -60,14 +73,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <View style={styles.errorContainer}>
             <Text style={styles.errorTitle}>Bir şeyler yanlış gitti</Text>
             <Text style={styles.errorMessage}>
-              Uygulama beklenmedik bir hatayla karşılaştı. Lütfen tekrar deneyin.
+              Uygulama beklenmedik bir hatayla karşılaştı. Lütfen tekrar
+              deneyin.
             </Text>
             {__DEV__ && this.state.error && (
               <Text style={styles.errorDetails}>
                 {this.state.error.message}
               </Text>
             )}
-            <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={this.handleRetry}>
               <Text style={styles.retryButtonText}>Tekrar Dene</Text>
             </TouchableOpacity>
           </View>
@@ -123,6 +139,3 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
 });
-
-
-

@@ -1,4 +1,4 @@
-package com.dmarjet.mobile
+package com.dmarjet
 
 import android.os.Build
 import android.os.Bundle

@@ -99,20 +99,44 @@ export const useWorkingHours = () => {
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error) {
         console.error('Çalışma saatleri alınırken hata:', error);
+        // Hata durumunda varsayılan değerlerle devam et
+        setStatus({
+          isWithinWorkingHours: true,
+          message: '',
+          workingHours: null,
+          isEnabled: false,
+        });
         return;
       }
 
-      if (data) {
-        const newStatus = checkWorkingHours(data);
-        setStatus(newStatus);
+      // Eğer veri yoksa veya boş array dönerse, varsayılan değerlerle devam et
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        setStatus({
+          isWithinWorkingHours: true,
+          message: '',
+          workingHours: null,
+          isEnabled: false,
+        });
+        return;
       }
+
+      // Array dönerse ilk elemanı al, değilse direkt kullan
+      const settings = Array.isArray(data) ? data[0] : data;
+      const newStatus = checkWorkingHours(settings);
+      setStatus(newStatus);
     } catch (error) {
       console.error('Çalışma saatleri kontrol hatası:', error);
+      // Hata durumunda varsayılan değerlerle devam et
+      setStatus({
+        isWithinWorkingHours: true,
+        message: '',
+        workingHours: null,
+        isEnabled: false,
+      });
     } finally {
       setLoading(false);
     }

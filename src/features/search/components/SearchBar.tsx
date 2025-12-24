@@ -12,7 +12,13 @@ import {
   Keyboard,
 } from 'react-native';
 import {Search, Xmark} from 'iconoir-react-native';
-import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
+import {
+  colors,
+  spacing,
+  fontSize,
+  fontWeight,
+  borderRadius,
+} from '@core/constants';
 
 interface SearchBarProps {
   initialValue?: string;
@@ -104,15 +110,5 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
 });
-
-
-
-
-
-
-
-
-
-
 
 

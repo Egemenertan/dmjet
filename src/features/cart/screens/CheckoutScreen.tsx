@@ -38,6 +38,7 @@ import {useCartStore} from '@store/slices/cartStore';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
 import {supabase} from '@core/services/supabase';
+import {useWorkingHoursContext} from '@core/contexts/WorkingHoursContext';
 import {
   getDeliverySettings,
   calculateDeliveryFee,
@@ -65,6 +66,7 @@ export const CheckoutScreen: React.FC = () => {
   const navigation = useNavigation();
   const {items, totalAmount, clearCart} = useCartStore();
   const {user, isAuthenticated} = useAuthStore();
+  const {isWithinWorkingHours, isEnabled: workingHoursEnabled, message: workingHoursMessage} = useWorkingHoursContext();
   
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
@@ -81,9 +83,12 @@ export const CheckoutScreen: React.FC = () => {
     } else {
       setLoadingLocation(false);
     }
-    // Fetch delivery settings on mount
-    fetchDeliverySettings();
   }, [isAuthenticated]);
+
+  // Delivery settings'i her zaman çek (login olsun olmasın)
+  useEffect(() => {
+    fetchDeliverySettings();
+  }, []);
 
   const fetchDeliverySettings = async () => {
     try {
@@ -152,7 +157,7 @@ export const CheckoutScreen: React.FC = () => {
 
   const handleSelectLocation = () => {
     if (!isAuthenticated) {
-      // Login sayfasına yönlendir ve geri dönüşte Checkout'a yönlendir
+      // Login veya Register sayfasına yönlendir ve geri dönüşte MapSelection'a yönlendir
       (navigation as any).navigate('Auth', {
         screen: 'Login',
         params: { returnTo: 'Checkout' }
@@ -246,6 +251,16 @@ export const CheckoutScreen: React.FC = () => {
       return;
     }
 
+    // Check working hours
+    if (workingHoursEnabled && !isWithinWorkingHours) {
+      Alert.alert(
+        t('checkout.outsideWorkingHours', 'Hizmet Saatleri Dışında'),
+        workingHoursMessage || t('checkout.outsideWorkingHoursMessage', 'Şu anda hizmet saatleri dışındayız. Lütfen daha sonra tekrar deneyin.'),
+        [{text: t('common.ok')}]
+      );
+      return;
+    }
+
     // Check minimum order requirement
     if (!canPlaceOrder) {
       const minAmount = deliverySettings?.min_order_amount || 0;
@@ -296,6 +311,40 @@ export const CheckoutScreen: React.FC = () => {
         barcode: item.barcode || null,
       }));
 
+      // Stocks tablosundan sell_price'ları çek ve detaylı ürün bilgilerini hazırla
+      const stockIds = items.map(item => parseInt(item.id));
+      const {data: stockData, error: stockError} = await supabase
+        .from('stocks')
+        .select('stock_id, sell_price')
+        .in('stock_id', stockIds);
+
+      if (stockError) {
+        console.error('Stock fiyat bilgisi alınamadı:', stockError);
+        throw stockError;
+      }
+
+      // Kar marjını al
+      const profitMargin = deliverySettings?.profit_margin || 10;
+
+      // Her ürün için detaylı bilgi oluştur
+      const itemsDetail = items.map(item => {
+        const stockItem = stockData?.find(s => s.stock_id === parseInt(item.id));
+        const sellPrice = stockItem?.sell_price || 0;
+        const finalPrice = item.price; // Sepetteki fiyat zaten kar marjı eklenmiş
+
+        return {
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          sell_price: sellPrice, // Stok satış fiyatı
+          final_price: finalPrice, // Müşteriye gösterilen fiyat (kar marjı eklenmiş)
+          profit_margin: profitMargin, // Uygulanan kar marjı
+          profit_amount: finalPrice - sellPrice, // Kar miktarı
+          image_url: item.image_url,
+          barcode: item.barcode || null,
+        };
+      });
+
       const shippingAddress = {
         address: userLocation.address,
         addressDetails: userLocation.addressDetails,
@@ -316,6 +365,7 @@ export const CheckoutScreen: React.FC = () => {
           payment_method: paymentMethod,
           shipping_address: shippingAddress,
           items: orderItems,
+          items_detail: itemsDetail, // Detaylı fiyat bilgileri
           status: 'preparing',
           delivery_note: orderNote.trim() || null,
         })
@@ -764,6 +814,18 @@ export const CheckoutScreen: React.FC = () => {
               </View>
             )}
 
+            {/* Working Hours Warning */}
+            {workingHoursEnabled && !isWithinWorkingHours && (
+              <View style={styles.workingHoursWarningBox}>
+                <Text style={styles.workingHoursWarningText}>
+                  {t('checkout.outsideWorkingHours', 'Hizmet Saatleri Dışında')}
+                </Text>
+                <Text style={styles.workingHoursWarningSubText}>
+                  {workingHoursMessage}
+                </Text>
+              </View>
+            )}
+
             {/* Divider */}
             <View style={styles.summaryDivider} />
 
@@ -798,7 +860,7 @@ export const CheckoutScreen: React.FC = () => {
             onPress={handlePlaceOrder}
             fullWidth
             rounded
-            disabled={isPlacingOrder || !userLocation || !canPlaceOrder || !isLocationInDeliveryArea}
+            disabled={isPlacingOrder || !userLocation || !canPlaceOrder || !isLocationInDeliveryArea || (workingHoursEnabled && !isWithinWorkingHours)}
           />
         )}
       </View>
@@ -1229,6 +1291,25 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: '#0C5460',
     textAlign: 'center',
+  },
+  workingHoursWarningBox: {
+    backgroundColor: '#F8D7DA',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#F5C2C7',
+  },
+  workingHoursWarningText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: '#842029',
+    marginBottom: 4,
+  },
+  workingHoursWarningSubText: {
+    fontSize: fontSize.xs,
+    color: '#842029',
+    lineHeight: 16,
   },
   deliveryWarningContainer: {
     backgroundColor: '#FFF3CD',

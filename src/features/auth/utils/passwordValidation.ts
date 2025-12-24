@@ -54,7 +54,7 @@ export const validatePassword = (password: string): PasswordValidation => {
   }
 
   // Password is valid if all requirements are met
-  const isValid = Object.values(errors).every((error) => !error);
+  const isValid = Object.values(errors).every(error => !error);
 
   return {
     isValid,
@@ -70,7 +70,7 @@ export const validatePassword = (password: string): PasswordValidation => {
  * @returns Color code for UI display
  */
 export const getPasswordStrengthColor = (
-  strength: 'weak' | 'medium' | 'strong'
+  strength: 'weak' | 'medium' | 'strong',
 ): string => {
   switch (strength) {
     case 'weak':
@@ -90,7 +90,7 @@ export const getPasswordStrengthColor = (
  * @returns Localized strength text
  */
 export const getPasswordStrengthText = (
-  strength: 'weak' | 'medium' | 'strong'
+  strength: 'weak' | 'medium' | 'strong',
 ): string => {
   switch (strength) {
     case 'weak':
@@ -133,7 +133,7 @@ export const hasCommonPatterns = (password: string): boolean => {
     /123123/,
   ];
 
-  return commonPatterns.some((pattern) => pattern.test(password));
+  return commonPatterns.some(pattern => pattern.test(password));
 };
 
 /**
@@ -142,8 +142,8 @@ export const hasCommonPatterns = (password: string): boolean => {
  * @returns Extended validation result
  */
 export const validatePasswordStrict = (
-  password: string
-): PasswordValidation & { hasCommonPattern: boolean } => {
+  password: string,
+): PasswordValidation & {hasCommonPattern: boolean} => {
   const validation = validatePassword(password);
   const hasCommonPattern = hasCommonPatterns(password);
 
@@ -153,13 +153,5 @@ export const validatePasswordStrict = (
     isValid: validation.isValid && !hasCommonPattern,
   };
 };
-
-
-
-
-
-
-
-
 
 

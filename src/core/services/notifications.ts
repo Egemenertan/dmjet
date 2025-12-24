@@ -147,9 +147,41 @@ class NotificationService {
 
   /**
    * Push token'ı kullanıcı profiline kaydet
+   * Retry logic for OAuth session initialization
    */
-  async savePushToken(userId: string, pushToken: string): Promise<boolean> {
+  async savePushToken(userId: string, pushToken: string, retryCount: number = 0): Promise<boolean> {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second
+
     try {
+      // First check if profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profileError) {
+        // If RLS error (profile might exist but RLS blocking), retry
+        if (profileError.code === 'PGRST116' && retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return this.savePushToken(userId, pushToken, retryCount + 1);
+        }
+        console.error('❌ Profil kontrolü hatası:', profileError.message);
+        return false;
+      }
+
+      if (!profile) {
+        // Profile doesn't exist yet, retry after delay
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return this.savePushToken(userId, pushToken, retryCount + 1);
+        }
+        console.warn('⚠️ Profil henüz oluşturulmadı, push token kaydedilemedi:', userId);
+        return false;
+      }
+
+      // Profile exists, update push token
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -160,11 +192,20 @@ class NotificationService {
         .select();
 
       if (error) {
+        // If RLS error, retry
+        if ((error.code === 'PGRST116' || error.code === '42501') && retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return this.savePushToken(userId, pushToken, retryCount + 1);
+        }
         console.error('❌ Push token kaydetme hatası:', error.message);
         return false;
       }
 
       if (!data || data.length === 0) {
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return this.savePushToken(userId, pushToken, retryCount + 1);
+        }
         console.error('❌ Kullanıcı bulunamadı:', userId);
         return false;
       }

@@ -18,7 +18,7 @@ export interface Notification {
  * Push notification yönetimi için custom hook
  */
 export const useNotifications = () => {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +29,7 @@ export const useNotifications = () => {
 
   /**
    * Push notification sistemini başlat
+   * Waits for profile to be loaded before saving push token
    */
   const initializePushNotifications = async () => {
     if (!user?.id) return;
@@ -40,11 +41,34 @@ export const useNotifications = () => {
       if (token) {
         setExpoPushToken(token);
         
-        // Token'ı veritabanına kaydet
-        const saved = await notificationService.savePushToken(user.id, token);
-        if (!saved) {
-          console.error('❌ Push token kaydedilemedi');
-        }
+        // Wait for profile to be available before saving token
+        // Retry up to 5 times with 1 second delay
+        let retryCount = 0;
+        const maxRetries = 5;
+        const retryDelay = 1000;
+
+        const saveToken = async (): Promise<void> => {
+          const currentProfile = useAuthStore.getState().profile;
+          
+          if (!currentProfile && retryCount < maxRetries) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return saveToken();
+          }
+
+          if (currentProfile) {
+            const saved = await notificationService.savePushToken(user.id, token);
+            if (!saved && retryCount < maxRetries) {
+              retryCount++;
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              return saveToken();
+            }
+          } else {
+            console.warn('⚠️ Profil yüklenmedi, push token kaydedilemedi');
+          }
+        };
+
+        await saveToken();
       }
     } catch (error) {
       console.error('❌ Push notification hatası:', error);
@@ -121,11 +145,18 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Push notification sistemini başlat
-    initializePushNotifications();
+    // Push notification sistemini başlat (profil yüklendikten sonra)
+    // Small delay to ensure profile is loaded
+    const timer = setTimeout(() => {
+      initializePushNotifications();
+    }, 500);
 
     // Bildirimleri yükle
     loadNotifications();
+
+    return () => {
+      clearTimeout(timer);
+    };
 
     // Uygulama açıkken gelen bildirimler için listener
     notificationListener.current = notificationService.addNotificationReceivedListener(
@@ -157,7 +188,7 @@ export const useNotifications = () => {
         responseListener.current.remove();
       }
     };
-  }, [user?.id]);
+  }, [user?.id, profile?.id]); // Also depend on profile to retry when profile loads
 
   // Unread count değiştiğinde badge'i güncelle
   useEffect(() => {

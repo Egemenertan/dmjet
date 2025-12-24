@@ -4,7 +4,7 @@
  */
 
 import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert} from 'react-native';
+import {View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert, ActivityIndicator} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {Ionicons} from '@expo/vector-icons';
@@ -18,6 +18,10 @@ import {getDeliverySettings, meetsMinimumOrder, calculateDeliveryFee, meetsMinim
 import {DeliverySettings} from '../types';
 import {supabase} from '@core/services/supabase';
 
+
+
+
+
 export const CartScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
@@ -28,6 +32,7 @@ export const CartScreen: React.FC = () => {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [checkingStock, setCheckingStock] = useState(false);
 
+  // Delivery settings'i her zaman çek (login olsun olmasın)
   useEffect(() => {
     fetchDeliverySettings();
   }, []);
@@ -166,6 +171,9 @@ export const CartScreen: React.FC = () => {
   // Calculate delivery fee (excluding cigarettes)
   const deliveryFee = calculateDeliveryFeeExcludingCigarettes(items, deliverySettings);
 
+  // Don't show loading screen for settings - just show cart with loading state
+  // This prevents flickering and provides better UX
+
   if (items.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -175,6 +183,9 @@ export const CartScreen: React.FC = () => {
         <View style={styles.emptyContainer}>
           <Ionicons name="cart-outline" size={80} color={colors.text.secondary} />
           <Text style={styles.emptyText}>{t('cart.empty')}</Text>
+          
+        
+          
           <Button
             title={t('cart.startShopping')}
             onPress={() => setActiveTab('Home')}
@@ -204,7 +215,7 @@ export const CartScreen: React.FC = () => {
               <Text style={styles.subtotalLabel}>{t('checkout.subtotal')}</Text>
               <Text style={styles.subtotalAmount}>{`₺${totalAmount.toFixed(2)}`}</Text>
             </View>
-
+          
             {/* Teslimat ücreti bilgisi */}
             {deliverySettings && (
               <View style={styles.deliveryFeeRow}>
@@ -224,8 +235,8 @@ export const CartScreen: React.FC = () => {
             {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Ücretsiz teslimat bilgisi */}
-            {deliverySettings && amountExcludingCigarettes < deliverySettings.min_order_for_free_delivery && canCheckout && (
+            {/* Ücretsiz teslimat bilgisi - minimum tutarı karşıladıysa ve henüz ücretsiz teslimat kazanmadıysa */}
+            {deliverySettings && meetsMinOrder && amountExcludingCigarettes < deliverySettings.min_order_for_free_delivery && (
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle" size={18} color="#0C5460" style={styles.infoIcon} />
                 <View style={styles.infoContent}>

@@ -3,16 +3,6 @@
  * Export all profile-related components
  */
 
-export { EditProfileModal } from './EditProfileModal';
-
-
-
-
-
-
-
-
-
-
+export {EditProfileModal} from './EditProfileModal';
 
 

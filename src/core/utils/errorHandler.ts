@@ -128,7 +128,7 @@ export const categorizeError = (error: any): ErrorType => {
 export const createError = (
   message: string,
   type: ErrorType = ErrorType.UNKNOWN,
-  code?: string
+  code?: string,
 ) => {
   const error = new Error(message) as any;
   error.type = type;
@@ -146,7 +146,7 @@ export const createError = (
 export const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
 ): Promise<T> => {
   let lastError: any;
 
@@ -160,20 +160,12 @@ export const retryWithBackoff = async <T>(
       if (i < maxRetries - 1) {
         // Exponential backoff
         const waitTime = delay * Math.pow(2, i);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
 
   throw lastError;
 };
-
-
-
-
-
-
-
-
 
 

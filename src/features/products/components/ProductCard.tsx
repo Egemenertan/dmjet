@@ -1,9 +1,10 @@
 /**
  * Product Card Component
  * Displays product information in a card
+ * Optimized with React.memo for better list performance
  */
 
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, memo} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Animated} from 'react-native';
 import { Trash } from 'iconoir-react-native';
 import {colors, spacing, borderRadius, fontSize, fontWeight} from '@core/constants';
@@ -22,7 +23,7 @@ interface ProductCardProps {
   onAddToCart: () => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({
+export const ProductCard: React.FC<ProductCardProps> = memo(({
   id,
   name,
   price,
@@ -152,7 +153,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison - sadece gerekli prop'lar değiştiğinde re-render
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.name === nextProps.name &&
+    prevProps.price === nextProps.price &&
+    prevProps.image_url === nextProps.image_url &&
+    prevProps.discount === nextProps.discount
+    // onPress ve onAddToCart fonksiyonları memoized olduğu için karşılaştırmaya gerek yok
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

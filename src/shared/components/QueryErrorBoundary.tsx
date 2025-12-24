@@ -24,14 +24,12 @@ export const QueryErrorBoundary: React.FC<Props> = ({children, fallback}) => {
               componentStack: errorInfo.componentStack,
             });
           }}
-          fallback={fallback}
-        >
+          fallback={fallback}>
           {children}
         </ErrorBoundary>
       )}
     </QueryErrorResetBoundary>
   );
 };
-
 
 

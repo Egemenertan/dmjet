@@ -59,8 +59,8 @@ describe('filterAndSortByMatch', () => {
     const results = filterAndSortByMatch(
       'bakım',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     expect(results.length).toBe(3);
@@ -69,24 +69,24 @@ describe('filterAndSortByMatch', () => {
     expect(results[2].name).toBe('Bebek Bakımı');
   });
 
-  it('kişisel araması için Kişisel Bakım\'ı en üstte döndürmeli', () => {
+  it("kişisel araması için Kişisel Bakım'ı en üstte döndürmeli", () => {
     const results = filterAndSortByMatch(
       'kişisel',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].name).toBe('Kişisel Bakım');
   });
 
-  it('bebek araması için Bebek Bakımı\'nı döndürmeli', () => {
+  it("bebek araması için Bebek Bakımı'nı döndürmeli", () => {
     const results = filterAndSortByMatch(
       'bebek',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     expect(results.length).toBeGreaterThan(0);
@@ -97,8 +97,8 @@ describe('filterAndSortByMatch', () => {
     const results = filterAndSortByMatch(
       'xyz',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     expect(results.length).toBe(0);
@@ -108,8 +108,8 @@ describe('filterAndSortByMatch', () => {
     const results = filterAndSortByMatch(
       'bakim',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     expect(results.length).toBe(3);
@@ -120,8 +120,8 @@ describe('filterAndSortByMatch', () => {
     const results = filterAndSortByMatch(
       'bakım',
       categories,
-      (cat) => cat.name,
-      50
+      cat => cat.name,
+      50,
     );
 
     // Her sonucun matchScore özelliği olmalı
@@ -132,8 +132,11 @@ describe('filterAndSortByMatch', () => {
 
     // Skorlar azalan sırada olmalı
     for (let i = 0; i < results.length - 1; i++) {
-      expect(results[i].matchScore).toBeGreaterThanOrEqual(results[i + 1].matchScore);
+      expect(results[i].matchScore).toBeGreaterThanOrEqual(
+        results[i + 1].matchScore,
+      );
     }
   });
 });
+
 

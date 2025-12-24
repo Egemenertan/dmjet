@@ -21,6 +21,7 @@ import {Search, Xmark, Pin, Building} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {env} from '@core/config/env';
 import {isInDeliveryArea} from '@core/utils/polygon';
+import {supabase} from '@core/services/supabase';
 
 interface PlaceResult {
   place_id: string;
@@ -79,6 +80,7 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
   }, [value]);
 
   // Enhanced Google Places Autocomplete API with better Gazimağusa & İskele support
+  // Supabase Edge Function üzerinden güvenli API çağrısı
   const searchPlaces = async (query: string) => {
     if (!query.trim() || query.length < 2) {
       setPredictions([]);
@@ -89,13 +91,11 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
     setIsLoading(true);
 
     try {
-      const apiKey = env.googleMaps.apiKey;
-      
       // Kuzey Kıbrıs merkezi ve sınırları ile arama
       const location = `${NORTH_CYPRUS_CENTER.latitude},${NORTH_CYPRUS_CENTER.longitude}`;
-      const radius = 60000; // 60km radius (daha geniş)
+      const radius = 80000; // 80km radius - tüm Kuzey Kıbrıs'ı kapsayacak şekilde genişletildi
       
-      // Gazimağusa ve İskele için özel arama terimleri
+      // Sadece özel şehir isimleri için alternatif ekle, genel aramalar için hiçbir şey ekleme
       let enhancedQuery = query;
       const lowerQuery = query.toLowerCase();
       
@@ -119,93 +119,98 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
       else if (lowerQuery.includes('güzelyurt') || lowerQuery.includes('morphou')) {
         enhancedQuery = query + ' Morphou Cyprus';
       }
+      // Genel aramalar için hiçbir şey ekleme - kullanıcının yazdığı gibi ara
+
+      console.log('🔍 Arama yapılıyor (Edge Function):', enhancedQuery);
       
-      const autocompleteUrl =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
-        `input=${encodeURIComponent(enhancedQuery)}&` +
-        `key=${apiKey}&` +
-        `location=${location}&` +
-        `radius=${radius}&` +
-        `components=country:cy&` +
-        `language=tr`;
+      // Supabase Edge Function üzerinden Google Places API'yi çağır
+      const { data, error } = await supabase.functions.invoke('google-places-proxy', {
+        body: {
+          input: enhancedQuery,
+          location,
+          radius,
+          language: 'tr',
+        },
+      });
 
-      console.log('🔍 Enhanced search for:', enhancedQuery);
+      if (error) {
+        console.error('❌ Edge Function error:', error);
+        setPredictions([]);
+        setShowModal(false);
+        return;
+      }
 
-      const response = await fetch(autocompleteUrl);
-      const data = await response.json();
+      console.log('📍 API Yanıtı (Edge Function):', data.status, 'Sonuç sayısı:', data.predictions?.length || 0);
 
       if (data.status === 'OK' && data.predictions) {
-        // Daha geniş filtreleme - Kuzey Kıbrıs'taki her şeyi dahil et
+        // Sadece Güney Kıbrıs şehirlerini hariç tut, diğer her şeyi göster
         const filtered = data.predictions.filter((pred: PlaceResult) => {
           const text = pred.description.toLowerCase();
+          
           // Güney Kıbrıs şehirlerini hariç tut
           const isSouthCyprus = 
             text.includes('limassol') ||
             text.includes('larnaca') ||
+            text.includes('larnaka') ||
             text.includes('paphos') ||
+            text.includes('pafos') ||
             text.includes('ayia napa') ||
-            text.includes('protaras');
+            text.includes('protaras') ||
+            text.includes('polis') ||
+            text.includes('paralimni');
             
-          if (isSouthCyprus) return false;
+          if (isSouthCyprus) {
+            console.log('❌ Güney Kıbrıs hariç tutuldu:', pred.description);
+            return false;
+          }
           
-          // Kuzey Kıbrıs şehirleri ve genel Cyprus içeren her şey
-          return (
-            text.includes('cyprus') ||
-            text.includes('kıbrıs') ||
-            text.includes('lefkoşa') ||
-            text.includes('nicosia') ||
-            text.includes('girne') ||
-            text.includes('kyrenia') ||
-            text.includes('gazimağusa') ||
-            text.includes('famagusta') ||
-            text.includes('magosa') ||
-            text.includes('güzelyurt') ||
-            text.includes('morphou') ||
-            text.includes('iskele') ||
-            text.includes('İskele') ||
-            text.includes('trikomo') ||
-            text.includes('dipkarpaz') ||
-            text.includes('karpaz') ||
-            text.includes('yeni erenköy') ||
-            text.includes('bafra') ||
-            text.includes('lapta') ||
-            text.includes('alsancak') ||
-            text.includes('çatalköy') ||
-            text.includes('karaoğlanoğlu')
-          );
+          // Güney Kıbrıs değilse, tüm sonuçları göster (Cyprus kelimesi olmasa bile)
+          console.log('✅ Sonuç dahil edildi:', pred.description);
+          return true;
         });
 
-        // Daha fazla sonuç göster (10 yerine 8)
-        setPredictions(filtered.slice(0, 10));
+        console.log('📋 Filtrelenmiş sonuç sayısı:', filtered.length);
+        
+        // Daha fazla sonuç göster (15'e kadar)
+        setPredictions(filtered.slice(0, 15));
         setShowModal(filtered.length > 0);
+        
+        if (filtered.length === 0) {
+          console.warn('⚠️ Filtreleme sonrası sonuç kalmadı');
+        }
       } else if (data.status === 'ZERO_RESULTS') {
+        console.log('⚠️ Sonuç bulunamadı');
         setPredictions([]);
         setShowModal(false);
       } else {
-        console.error('Places API error:', data.status, data.error_message);
+        console.error('❌ Places API error:', data.status, data.error_message);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('❌ Search error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Place Details API
+  // Place Details API - Supabase Edge Function üzerinden
   const getPlaceDetails = async (placeId: string, description: string) => {
     try {
       setIsLoading(true);
-      const apiKey = env.googleMaps.apiKey;
 
-      const detailsUrl =
-        `https://maps.googleapis.com/maps/api/place/details/json?` +
-        `place_id=${placeId}&` +
-        `key=${apiKey}&` +
-        `fields=geometry,formatted_address,address_components&` +
-        `language=tr`;
+      console.log('🔍 Place Details alınıyor (Edge Function):', placeId);
 
-      const response = await fetch(detailsUrl);
-      const data = await response.json();
+      // Supabase Edge Function üzerinden Google Place Details API'yi çağır
+      const { data, error } = await supabase.functions.invoke('google-places-proxy', {
+        body: {
+          placeId,
+          language: 'tr',
+        },
+      });
+
+      if (error) {
+        console.error('❌ Edge Function error:', error);
+        throw error;
+      }
 
       if (data.status === 'OK' && data.result) {
         const result = data.result;
@@ -271,7 +276,6 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
           district,
         };
 
-        console.log('📍 Selected location:', locationData);
         onLocationSelect(locationData);
         setShowModal(false);
         Keyboard.dismiss();
@@ -412,7 +416,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     zIndex: 1000,
-    marginBottom: spacing.md,
+    marginBottom: 0, // Modal için alan bırakmak üzere margin kaldırıldı
   },
   inputContainer: {
     flexDirection: 'row',
@@ -443,29 +447,29 @@ const styles = StyleSheet.create({
   // Dropdown Styles (below search bar)
   dropdownContainer: {
     position: 'absolute',
-    top: 58, // Just below the input (50px height + 8px margin)
+    top: 56, // Input'un hemen altında (50px height + 6px gap)
     left: 0,
     right: 0,
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    maxHeight: 300,
-    zIndex: 1001,
+    maxHeight: 320, // Daha fazla sonuç için yükseklik artırıldı
+    zIndex: 9999, // Çok yüksek z-index ile her şeyin üstünde görünmesini sağla
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 8,
+        elevation: 16, // Android'de daha yüksek elevation
       },
     }),
   },
   dropdownScroll: {
-    maxHeight: 300,
+    maxHeight: 320,
   },
   suggestionItem: {
     flexDirection: 'row',
