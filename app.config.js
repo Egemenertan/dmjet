@@ -120,6 +120,7 @@ export default {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.dmarjet',
+      buildNumber: '3',
       subtitle: 'Hızlı Market Teslimatı',
       config: {
         usesNonExemptEncryption: false,
