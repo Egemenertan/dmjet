@@ -120,7 +120,11 @@
     "tobaccoExcluded": "* Tütün ürünleri minimum tutara dahil değildir",
     "freeDeliveryInfo": "{{amount}} ve üzeri ücretsiz teslimat",
     "freeDeliveryEarned": "Ücretsiz teslimat kazandınız!",
-    "free": "Ücretsiz"
+    "free": "Ücretsiz",
+    "freeDeliveryRemaining": "Ücretsiz teslimat için {{amount}}₺ kaldı",
+    "freeDeliveryAchieved": " Ücretsiz teslimat kazandınız!",
+    "goToCheckout": "Ödemeye Git",
+    "viewCart": "Sepeti Görüntüle"
   },
   "orders": {
     "title": "Siparişlerim",

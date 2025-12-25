@@ -3,7 +3,7 @@
  * Admin panel for managing pending orders
  */
 
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -63,6 +63,180 @@ const getStatusConfig = (t: any) => ({
   },
 });
 
+// Memoized Map Preview Component
+const MapPreview = React.memo<{
+  latitude: number;
+  longitude: number;
+  address: string;
+  onPress: () => void;
+}>(({latitude, longitude, address, onPress}) => {
+  if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+    return null;
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.mapPreviewContainer}
+      onPress={onPress}
+      activeOpacity={0.9}>
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.mapPreview}
+        initialRegion={{
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+        scrollEnabled={false}
+        zoomEnabled={false}
+        pitchEnabled={false}
+        rotateEnabled={false}
+        pointerEvents="none">
+        <Marker
+          coordinate={{latitude, longitude}}
+          pinColor={colors.primary}
+        />
+      </MapView>
+    </TouchableOpacity>
+  );
+});
+
+// Memoized Product Item for Picker
+const PickerProductItem = React.memo<{
+  item: any;
+  index: number;
+  orderId: string;
+  enteredCount: number;
+  isCorrectCount: boolean;
+  hasError: boolean;
+  isChecked: boolean;
+  onCountChange: (orderId: string, index: number, value: string) => void;
+  onImagePress: () => void;
+}>(({item, index, orderId, enteredCount, isCorrectCount, hasError, isChecked, onCountChange, onImagePress}) => {
+  const imageUrl = useMemo(() => getProductImageUrl(item.image_url), [item.image_url]);
+
+  return (
+    <View
+      style={[
+        styles.pickerProductRow,
+        isCorrectCount && styles.pickerProductRowSuccess,
+        isChecked && styles.pickerProductRowChecked,
+      ]}>
+      {/* Tıklanabilir Ürün Resmi */}
+      <TouchableOpacity
+        style={[
+          styles.pickerProductImageContainer,
+          isCorrectCount && styles.pickerProductImageSuccess,
+          isChecked && styles.pickerProductImageChecked,
+        ]}
+        onPress={onImagePress}
+        activeOpacity={0.7}>
+        {imageUrl ? (
+          <Image
+            source={{uri: imageUrl}}
+            style={styles.pickerProductImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Package
+              width={20}
+              height={20}
+              color={colors.text.tertiary}
+              strokeWidth={2}
+            />
+          </View>
+        )}
+      </TouchableOpacity>
+      <View style={styles.pickerProductInfo}>
+        <View style={styles.pickerProductNameRow}>
+          <Text style={styles.pickerProductName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          {/* Tamamlandı Badge - Miktar doğruysa göster */}
+          {isCorrectCount && (
+            <View style={styles.completedBadge}>
+              <Check
+                width={14}
+                height={14}
+                color="#fff"
+                strokeWidth={3}
+              />
+              <Text style={styles.completedBadgeText}>Tamamlandı</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.pickerPriceRow}>
+          <Text style={styles.pickerProductPrice}>
+            ₺{item.price.toFixed(2)}
+          </Text>
+          <View style={styles.pickerQuantityBadge}>
+            <Text style={styles.pickerQuantityBadgeText}>
+              {item.quantity} Adet
+            </Text>
+          </View>
+        </View>
+      </View>
+      {/* Eklenen Adet Input */}
+      <View style={styles.pickerInputContainer}>
+        <Text style={styles.pickerInputLabel}>Eklenen:</Text>
+        <TextInput
+          style={[
+            styles.pickerInput,
+            hasError && styles.pickerInputError,
+            enteredCount === item.quantity && enteredCount > 0 && styles.pickerInputSuccess,
+          ]}
+          value={enteredCount > 0 ? enteredCount.toString() : ''}
+          onChangeText={(value) => onCountChange(orderId, index, value)}
+          keyboardType="number-pad"
+          placeholder="0"
+          placeholderTextColor={colors.text.tertiary}
+          maxLength={3}
+        />
+      </View>
+    </View>
+  );
+});
+
+// Memoized Product Item for Admin/Courier
+const AdminProductItem = React.memo<{item: any; index: number}>(({item, index}) => {
+  const imageUrl = useMemo(() => getProductImageUrl(item.image_url), [item.image_url]);
+
+  return (
+    <View key={index} style={styles.productItem}>
+      <View style={styles.productImageWrapper}>
+        <View style={styles.productImageContainer}>
+          {imageUrl ? (
+            <Image
+              source={{uri: imageUrl}}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.productImagePlaceholder}>
+              <Package
+                width={16}
+                height={16}
+                color={colors.text.tertiary}
+                strokeWidth={2}
+              />
+            </View>
+          )}
+        </View>
+        <View style={styles.quantityBadge}>
+          <Text style={styles.quantityText}>
+            {item.quantity}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.productName} numberOfLines={2}>
+        {item.name}
+      </Text>
+    </View>
+  );
+});
+
 const PAGE_SIZE = 20; // Her seferinde 20 sipariş yükle
 
 const AdminOrdersScreenContent: React.FC = () => {
@@ -89,20 +263,37 @@ const AdminOrdersScreenContent: React.FC = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [currentOrderId, setCurrentOrderId] = useState<string>('');
 
-  const statusConfig = getStatusConfig(t);
+  // Memoize status config
+  const statusConfig = useMemo(() => getStatusConfig(t), [t]);
 
   // Güvenlik kontrolü artık RoleGuard tarafından yapılıyor
 
-  // Filter orders based on active tab
-  const orders = allOrders.filter(order => {
-    if (activeTab === 'pending') {
-      return order.status !== 'delivered';
-    } else {
-      return order.status === 'delivered';
-    }
-  });
+  // Filter orders based on active tab - Memoized
+  const orders = useMemo(() => {
+    return allOrders.filter(order => {
+      if (activeTab === 'pending') {
+        return order.status !== 'delivered';
+      } else {
+        return order.status === 'delivered';
+      }
+    });
+  }, [allOrders, activeTab]);
 
-  const hasMore = activeTab === 'pending' ? hasMorePending : hasMoreCompleted;
+  const hasMore = useMemo(() => 
+    activeTab === 'pending' ? hasMorePending : hasMoreCompleted,
+    [activeTab, hasMorePending, hasMoreCompleted]
+  );
+
+  // Memoize tab counts
+  const pendingCount = useMemo(() => 
+    allOrders.filter(o => o.status !== 'delivered').length,
+    [allOrders]
+  );
+
+  const completedCount = useMemo(() => 
+    allOrders.filter(o => o.status === 'delivered').length,
+    [allOrders]
+  );
 
   // Load checked items from AsyncStorage
   const loadCheckedItems = async () => {
@@ -373,7 +564,7 @@ const AdminOrdersScreenContent: React.FC = () => {
     setShowDropdownForOrder(showDropdownForOrder === orderId ? null : orderId);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
@@ -393,9 +584,9 @@ const AdminOrdersScreenContent: React.FC = () => {
         year: 'numeric',
       });
     }
-  };
+  }, [t]);
 
-  const openGoogleMaps = (address: string, latitude?: number, longitude?: number) => {
+  const openGoogleMaps = useCallback((address: string, latitude?: number, longitude?: number) => {
     try {
       let url: string;
       
@@ -439,7 +630,7 @@ const AdminOrdersScreenContent: React.FC = () => {
       console.error('Harita URL oluşturulamadı:', error);
       Alert.alert(t('common.error'), 'Yol tarifi alınamadı.');
     }
-  };
+  }, [t]);
 
   // Unauthorized access
   if (!canAccessAdminOrders) {
@@ -495,11 +686,9 @@ const AdminOrdersScreenContent: React.FC = () => {
             ]}>
             Bekleyen Siparişler
           </Text>
-          {allOrders.filter(o => o.status !== 'delivered').length > 0 && (
+          {pendingCount > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {allOrders.filter(o => o.status !== 'delivered').length}
-              </Text>
+              <Text style={styles.tabBadgeText}>{pendingCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -518,11 +707,9 @@ const AdminOrdersScreenContent: React.FC = () => {
             ]}>
             Tamamlanan Siparişler
           </Text>
-          {allOrders.filter(o => o.status === 'delivered').length > 0 && (
+          {completedCount > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {allOrders.filter(o => o.status === 'delivered').length}
-              </Text>
+              <Text style={styles.tabBadgeText}>{completedCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -631,112 +818,45 @@ const AdminOrdersScreenContent: React.FC = () => {
                         Ürünler ({order.items.length} adet)
                       </Text>
                       {order.items.map((item, index) => {
-                        const imageUrl = getProductImageUrl(item.image_url);
-
                         const enteredCount = pickerItemCounts[order.id]?.[index] || 0;
                         const isCorrectCount = enteredCount === item.quantity && enteredCount > 0;
                         const hasError = enteredCount !== item.quantity && enteredCount > 0;
                         const isChecked = pickerItemChecked[order.id]?.[index] || false;
 
                         return (
-                          <View key={index} style={[
-                            styles.pickerProductRow,
-                            isCorrectCount && styles.pickerProductRowSuccess,
-                            isChecked && styles.pickerProductRowChecked,
-                          ]}>
-                            {/* Tıklanabilir Ürün Resmi */}
-                            <TouchableOpacity
-                              style={[
-                                styles.pickerProductImageContainer,
-                                isCorrectCount && styles.pickerProductImageSuccess,
-                                isChecked && styles.pickerProductImageChecked,
-                              ]}
-                              onPress={() => {
-                                if (imageUrl) {
-                                  // Tüm ürünlerin resimlerini gallery'ye ekle
-                                  const images = order.items
-                                    .map((item, idx) => {
-                                      const url = getProductImageUrl(item.image_url);
-                                      return url ? {
-                                        url,
-                                        name: item.name,
-                                        quantity: item.quantity,
-                                        itemIndex: idx,
-                                        orderId: order.id,
-                                      } : null;
-                                    })
-                                    .filter((img): img is {url: string; name: string; quantity: number; itemIndex: number; orderId: string} => img !== null);
-                                  
-                                  setGalleryImages(images);
-                                  setSelectedImageIndex(index);
-                                  setCurrentOrderId(order.id);
-                                }
-                              }}
-                              activeOpacity={0.7}>
-                              {imageUrl ? (
-                                <Image
-                                  source={{uri: imageUrl}}
-                                  style={styles.pickerProductImage}
-                                  resizeMode="cover"
-                                />
-                              ) : (
-                                <View style={styles.productImagePlaceholder}>
-                                  <Package
-                                    width={20}
-                                    height={20}
-                                    color={colors.text.tertiary}
-                                    strokeWidth={2}
-                                  />
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                            <View style={styles.pickerProductInfo}>
-                              <View style={styles.pickerProductNameRow}>
-                                <Text style={styles.pickerProductName} numberOfLines={2}>
-                                  {item.name}
-                                </Text>
-                                {/* Tamamlandı Badge - Miktar doğruysa göster */}
-                                {isCorrectCount && (
-                                  <View style={styles.completedBadge}>
-                                    <Check
-                                      width={14}
-                                      height={14}
-                                      color="#fff"
-                                      strokeWidth={3}
-                                    />
-                                    <Text style={styles.completedBadgeText}>Tamamlandı</Text>
-                                  </View>
-                                )}
-                              </View>
-                              <View style={styles.pickerPriceRow}>
-                                <Text style={styles.pickerProductPrice}>
-                                  ₺{item.price.toFixed(2)}
-                                </Text>
-                                <View style={styles.pickerQuantityBadge}>
-                                  <Text style={styles.pickerQuantityBadgeText}>
-                                    {item.quantity} Adet
-                                  </Text>
-                                </View>
-                              </View>
-                            </View>
-                            {/* Eklenen Adet Input */}
-                            <View style={styles.pickerInputContainer}>
-                              <Text style={styles.pickerInputLabel}>Eklenen:</Text>
-                              <TextInput
-                                style={[
-                                  styles.pickerInput,
-                                  hasError && styles.pickerInputError,
-                                  enteredCount === item.quantity && enteredCount > 0 && styles.pickerInputSuccess,
-                                ]}
-                                value={enteredCount > 0 ? enteredCount.toString() : ''}
-                                onChangeText={(value) => handlePickerItemCountChange(order.id, index, value)}
-                                keyboardType="number-pad"
-                                placeholder="0"
-                                placeholderTextColor={colors.text.tertiary}
-                                maxLength={3}
-                              />
-                            </View>
-                          </View>
+                          <PickerProductItem
+                            key={`${order.id}-${index}`}
+                            item={item}
+                            index={index}
+                            orderId={order.id}
+                            enteredCount={enteredCount}
+                            isCorrectCount={isCorrectCount}
+                            hasError={hasError}
+                            isChecked={isChecked}
+                            onCountChange={handlePickerItemCountChange}
+                            onImagePress={() => {
+                              const imageUrl = getProductImageUrl(item.image_url);
+                              if (imageUrl) {
+                                // Tüm ürünlerin resimlerini gallery'ye ekle
+                                const images = order.items
+                                  .map((item, idx) => {
+                                    const url = getProductImageUrl(item.image_url);
+                                    return url ? {
+                                      url,
+                                      name: item.name,
+                                      quantity: item.quantity,
+                                      itemIndex: idx,
+                                      orderId: order.id,
+                                    } : null;
+                                  })
+                                  .filter((img): img is {url: string; name: string; quantity: number; itemIndex: number; orderId: string} => img !== null);
+                                
+                                setGalleryImages(images);
+                                setSelectedImageIndex(index);
+                                setCurrentOrderId(order.id);
+                              }
+                            }}
+                          />
                         );
                       })}
                     </View>
@@ -828,46 +948,18 @@ const AdminOrdersScreenContent: React.FC = () => {
                   {order.shipping_address?.address && (
                     <View style={styles.addressContainer}>
                       {/* Map Preview - Only show if coordinates exist */}
-                      {order.shipping_address.latitude &&
-                        order.shipping_address.longitude &&
-                        order.shipping_address.latitude !== 0 &&
-                        order.shipping_address.longitude !== 0 && (
-                          <TouchableOpacity
-                            style={styles.mapPreviewContainer}
-                            onPress={() =>
-                              openGoogleMaps(
-                                order.shipping_address.address,
-                                order.shipping_address.latitude,
-                                order.shipping_address.longitude
-                              )
-                            }
-                            activeOpacity={0.9}>
-                            <MapView
-                              provider={PROVIDER_GOOGLE}
-                              style={styles.mapPreview}
-                              initialRegion={{
-                                latitude: order.shipping_address.latitude,
-                                longitude: order.shipping_address.longitude,
-                                latitudeDelta: 0.01,
-                                longitudeDelta: 0.01,
-                              }}
-                              scrollEnabled={false}
-                              zoomEnabled={false}
-                              pitchEnabled={false}
-                              rotateEnabled={false}
-                              pointerEvents="none">
-                              <Marker
-                                coordinate={{
-                                  latitude: order.shipping_address.latitude,
-                                  longitude: order.shipping_address.longitude,
-                                }}
-                                pinColor={colors.primary}
-                              />
-                            </MapView>
-                            {/* Overlay for tap indication */}
-                            
-                          </TouchableOpacity>
-                        )}
+                      <MapPreview
+                        latitude={order.shipping_address.latitude}
+                        longitude={order.shipping_address.longitude}
+                        address={order.shipping_address.address}
+                        onPress={() =>
+                          openGoogleMaps(
+                            order.shipping_address.address,
+                            order.shipping_address.latitude,
+                            order.shipping_address.longitude
+                          )
+                        }
+                      />
 
                       {/* Address Info */}
                       <View style={styles.addressInfoContainer}>
@@ -984,42 +1076,9 @@ const AdminOrdersScreenContent: React.FC = () => {
                       {t('orders.products')}
                     </Text>
                     <View style={styles.productsList}>
-                      {order.items.map((item, index) => {
-                        const imageUrl = getProductImageUrl(item.image_url);
-
-                        return (
-                          <View key={index} style={styles.productItem}>
-                            <View style={styles.productImageWrapper}>
-                              <View style={styles.productImageContainer}>
-                                {imageUrl ? (
-                                  <Image
-                                    source={{uri: imageUrl}}
-                                    style={styles.productImage}
-                                    resizeMode="cover"
-                                  />
-                                ) : (
-                                  <View style={styles.productImagePlaceholder}>
-                                    <Package
-                                      width={16}
-                                      height={16}
-                                      color={colors.text.tertiary}
-                                      strokeWidth={2}
-                                    />
-                                  </View>
-                                )}
-                              </View>
-                              <View style={styles.quantityBadge}>
-                                <Text style={styles.quantityText}>
-                                  {item.quantity}
-                                </Text>
-                              </View>
-                            </View>
-                            <Text style={styles.productName} numberOfLines={2}>
-                              {item.name}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                      {order.items.map((item, index) => (
+                        <AdminProductItem key={`${order.id}-${index}`} item={item} index={index} />
+                      ))}
                     </View>
                   </View>
 

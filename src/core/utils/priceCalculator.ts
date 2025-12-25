@@ -55,3 +55,6 @@ export const calculateProfitMarginFromPrices = (
   return Math.round(profitMargin * 100) / 100;
 };
 
+
+
+

@@ -120,7 +120,11 @@
     "tobaccoExcluded": "* Табачные изделия не включены в минимальную сумму",
     "freeDeliveryInfo": "Бесплатная доставка при заказе от {{amount}}",
     "freeDeliveryEarned": "Вы получили бесплатную доставку!",
-    "free": "Бесплатно"
+    "free": "Бесплатно",
+    "freeDeliveryRemaining": "Еще {{amount}}₺ до бесплатной доставки",
+    "freeDeliveryAchieved": " Бесплатная доставка получена!",
+    "goToCheckout": "Перейти к оформлению",
+    "viewCart": "Посмотреть корзину"
   },
   "orders": {
     "title": "Мои заказы",

@@ -204,17 +204,6 @@ export default {
           mode: 'production',
         },
       ],
-      [
-        '@sentry/react-native/expo',
-        {
-          organization: getEnvVar('SENTRY_ORG'),
-          project: getEnvVar('SENTRY_PROJECT'),
-          url: 'https://sentry.io/',
-          authToken: getEnvVar('SENTRY_AUTH_TOKEN'),
-          setCommits: false,
-          uploadSourceMaps: false, // Geçici olarak devre dışı
-        },
-      ],
     ],
   },
 };

@@ -27,6 +27,9 @@ import {
 } from 'iconoir-react-native';
 import {colors, spacing, borderRadius} from '@core/constants';
 import {useTranslation} from '@localization';
+import {useCartStore} from '@store/slices/cartStore';
+import {getDeliverySettings, calculateAmountExcludingCigarettes} from '@features/cart/services/deliveryService';
+import {DeliverySettings} from '@features/cart/types';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -42,6 +45,8 @@ interface ModernBottomBarProps {
   onSearch?: (query: string) => void;
   cartItemCount?: number;
   isAdmin?: boolean;
+  onCheckout?: () => void;
+  canCheckout?: boolean;
 }
 
 // Base tabs - Orders tab will be dynamically configured based on admin status
@@ -65,6 +70,8 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
   onSearch,
   cartItemCount = 0,
   isAdmin = false,
+  onCheckout,
+  canCheckout = true,
 }) => {
   const {t} = useTranslation();
   const insets = useSafeAreaInsets();
@@ -77,6 +84,77 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
   
   // Get tabs configuration based on admin status
   const TABS = getTabsConfig(isAdmin);
+  
+  // Aktif tab için slide animasyonu
+  const slideAnimation = React.useRef(new Animated.Value(0)).current;
+  
+  // Buton pozisyonlarını saklamak için
+  const [buttonPositions, setButtonPositions] = React.useState<number[]>([]);
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  
+  // Sepet ve teslimat ayarları için state
+  const {items, totalAmount} = useCartStore();
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+  
+  // Teslimat ayarlarını yükle
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const settings = await getDeliverySettings();
+      setDeliverySettings(settings);
+    };
+    fetchSettings();
+  }, []);
+  
+  // Sigara hariç sepet tutarını hesapla
+  const cartAmountExcludingCigarettes = calculateAmountExcludingCigarettes(items);
+  
+  // Progress bar için yüzde hesapla
+  const freeDeliveryLimit = deliverySettings?.min_order_for_free_delivery || 500;
+  const progressPercentage = Math.min((cartAmountExcludingCigarettes / freeDeliveryLimit) * 100, 100);
+  const remainingAmount = Math.max(freeDeliveryLimit - cartAmountExcludingCigarettes, 0);
+  
+  // Progress bar animasyonu
+  const progressAnimValue = React.useRef(new Animated.Value(0)).current;
+  const [showAchievedMessage, setShowAchievedMessage] = useState(false);
+  const [showCheckoutButton, setShowCheckoutButton] = useState(false);
+  
+  useEffect(() => {
+    Animated.timing(progressAnimValue, {
+      toValue: progressPercentage,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [progressPercentage]);
+  
+  // Bar %100'e ulaştığında başarı mesajını göster, 3 saniye sonra checkout butonuna geç
+  useEffect(() => {
+    if (progressPercentage >= 100 && cartItemCount > 0) {
+      setShowAchievedMessage(true);
+      setShowCheckoutButton(false);
+      
+      const timer = setTimeout(() => {
+        setShowAchievedMessage(false);
+        setShowCheckoutButton(true);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowAchievedMessage(false);
+      setShowCheckoutButton(false);
+    }
+  }, [progressPercentage, cartItemCount]);
+  
+  // Active tab değiştiğinde animasyon
+  useEffect(() => {
+    const activeIndex = TABS.findIndex(tab => tab.key === activeTab);
+    // activeIndex -1 ise (tab bulunamadıysa) animasyonu 0'a çek ama opacity ile gizle
+    Animated.spring(slideAnimation, {
+      toValue: activeIndex >= 0 ? activeIndex : 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, [activeTab, TABS]);
 
   // Klavye event listener'ları
   useEffect(() => {
@@ -214,6 +292,57 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
           ],
         },
       ]}>
+      {/* Progress Bar - Ücretsiz Teslimat */}
+      {cartItemCount > 0 && !isSearchOpen && (
+        <View style={styles.progressBarContainer}>
+          {progressPercentage < 100 ? (
+            <View style={styles.progressBarWrapper}>
+              <View style={styles.progressBarBackground}>
+                <Animated.View 
+                  style={[
+                    styles.progressBarFill,
+                    { 
+                      width: progressAnimValue.interpolate({
+                        inputRange: [0, 100],
+                        outputRange: ['0%', '100%'],
+                      })
+                    }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.progressText}>
+                {t('cart.freeDeliveryRemaining', { amount: remainingAmount.toFixed(0) })}
+              </Text>
+            </View>
+          ) : showAchievedMessage ? (
+            <View style={styles.achievedTextContainer}>
+              <Text style={styles.achievedText}>
+                {t('cart.freeDeliveryAchieved')}
+              </Text>
+            </View>
+          ) : showCheckoutButton && onCheckout ? (
+            <TouchableOpacity
+              style={styles.checkoutButtonContainer}
+              onPress={() => {
+                // Eğer checkout yapılamıyorsa (hizmet saatleri dışı vb.) sadece Cart tab'ına git
+                if (!canCheckout) {
+                  onTabChange('Cart');
+                } else {
+                  // Checkout yapılabiliyorsa normal checkout fonksiyonunu çağır
+                  onCheckout();
+                }
+              }}
+              activeOpacity={0.8}>
+              <View style={styles.checkoutButton}>
+                <Text style={styles.checkoutButtonText}>
+                  {canCheckout ? t('cart.goToCheckout') : t('cart.viewCart')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      )}
+      
       {/* Main Bottom Bar Container */}
       <View style={styles.innerContainer}>
         {/* Pill-style Tab Bar with Liquid Glass Effect */}
@@ -229,8 +358,34 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
           <BlurView
             intensity={80}
             tint="light"
-            style={styles.pillContainer}>
-            {TABS.map((tab) => {
+            style={styles.pillContainer}
+            onLayout={(e) => {
+              const width = e.nativeEvent.layout.width;
+              setContainerWidth(width);
+            }}>
+            {/* Sliding Background Indicator */}
+            <Animated.View
+              style={[
+                styles.slidingBackground,
+                {
+                  width: containerWidth > 0 ? (containerWidth - 8) / 3 : 0,
+                  opacity: TABS.findIndex(tab => tab.key === activeTab) >= 0 ? 1 : 0, // activeTab geçersizse gizle
+                  transform: [
+                    {
+                      translateX: slideAnimation.interpolate({
+                        inputRange: [0, 1, 2],
+                        outputRange: containerWidth > 0 ? [
+                          4, // İlk buton
+                          4 + (containerWidth - 8) / 3, // İkinci buton
+                          4 + ((containerWidth - 8) / 3) * 2, // Üçüncü buton
+                        ] : [0, 0, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+            {TABS.map((tab, index) => {
               const isActive = activeTab === tab.key;
               const Icon = tab.icon;
               // Show badge only for Cart tab
@@ -239,10 +394,7 @@ export const ModernBottomBar: React.FC<ModernBottomBarProps> = ({
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  style={[
-                    styles.tabButton,
-                    isActive && styles.tabButtonActive,
-                  ]}
+                  style={styles.tabButton}
                   onPress={() => onTabChange(tab.key)}
                   activeOpacity={0.7}>
                   <View style={styles.iconContainer}>
@@ -383,32 +535,33 @@ const styles = StyleSheet.create({
     bottom: -20,
     left: 0,
     right: 0,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     backgroundColor: 'transparent',
+    
   },
   innerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.xs, // Ana bar ile search butonu arası boşluk azaltıldı
   },
   pillContainerWrapper: {
     flex: 1,
-    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.md, // Ekran genişliği - padding - search button (kapalıyken) - gap
-    height: 70,
+    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs, // Ekran genişliği - padding - search button - gap (xs)
+    height: 65,
     overflow: 'hidden',
   },
   pillContainer: {
     flexDirection: 'row',
     borderRadius: borderRadius.full,
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-    gap: spacing.xs,
+    paddingHorizontal: 1,
+    paddingVertical: 1,
+    gap: 0,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(84, 176, 71, 0.2)',
-    backgroundColor: 'rgba(84, 176, 71, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(84, 176, 71, 0.06)',
     height: 65,
   },
   tabButton: {
@@ -420,10 +573,18 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     gap: 1,
-    minWidth: 60,
+    minWidth: 80,
+    zIndex: 1,
   },
-  tabButtonActive: {
-    backgroundColor: 'rgba(84, 176, 71, 0.15)',
+  slidingBackground: {
+    position: 'absolute',
+    left: -1,
+    top: 1,
+    bottom: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   tabLabel: {
     fontSize: 10,
@@ -436,8 +597,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   searchButtonWrapper: {
-    width: 70,
-    height: 70,
+    width: 65,
+    height: 65,
   },
   searchButton: {
     width: 65,
@@ -446,9 +607,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(84, 176, 71, 0.2)',
-    backgroundColor: 'rgba(84, 176, 71, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(84, 176, 71, 0.06)',
   },
   searchBarWrapper: {
     position: 'absolute',
@@ -457,7 +618,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 70,
+    height: 65,
     gap: spacing.xs,
     overflow: 'visible',
     zIndex: 1000,
@@ -475,19 +636,19 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   closeSearchButton: {
-    width: 70,
-    height: 70,
+    width: 65,
+    height: 65,
   },
   closeSearchButtonInner: {
-    width: 70,
-    height: 70,
+    width: 65,
+    height: 65,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(84, 176, 71, 0.2)',
-    backgroundColor: 'rgba(84, 176, 71, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(84, 176, 71, 0.06)',
   },
   iconContainer: {
     position: 'relative',
@@ -520,18 +681,109 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(84, 176, 71, 0.2)',
-    backgroundColor: 'rgba(84, 176, 71, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(84, 176, 71, 0.06)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 19,
     color: colors.text.primary,
     paddingVertical: spacing.sm,
   },
   clearButton: {
     padding: spacing.xs,
+  },
+  progressBarContainer: {
+    position: 'absolute',
+    top: -18,
+    left: spacing.xl,
+    right: spacing.md,
+    zIndex: 999,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  progressBarWrapper: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(84, 176, 71, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    width: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+  },
+  progressBarBackground: {
+    height: 4,
+    backgroundColor: 'rgba(84, 176, 71, 0.15)',
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+    marginBottom: spacing.xs,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  achievedTextContainer: {
+    backgroundColor: 'rgba(84, 176, 71, 0.95)',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(84, 176, 71, 1)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+    width: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+  },
+  achievedText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  checkoutButtonContainer: {
+    width: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+    maxWidth: SCREEN_WIDTH - spacing.lg * 2 - 70 - spacing.xs - 8,
+  },
+  checkoutButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(84, 176, 71, 1)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkoutButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
 });
 

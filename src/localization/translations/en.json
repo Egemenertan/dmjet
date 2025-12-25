@@ -120,7 +120,11 @@
     "tobaccoExcluded": "* Tobacco products are not included in the minimum amount",
     "freeDeliveryInfo": "Free delivery on orders over {{amount}}",
     "freeDeliveryEarned": "You've earned free delivery!",
-    "free": "Free"
+    "free": "Free",
+    "freeDeliveryRemaining": "{{amount}}₺ more for free delivery",
+    "freeDeliveryAchieved": "Free delivery unlocked!",
+    "goToCheckout": "Go to Checkout",
+    "viewCart": "View Cart"
   },
   "orders": {
     "title": "My Orders",

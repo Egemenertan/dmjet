@@ -149,3 +149,6 @@ supabase secrets set GOOGLE_MAPS_API_KEY=your_key --project-ref your-project-id
 - [Supabase Edge Functions Docs](https://supabase.com/docs/guides/functions)
 - [Google Places API Docs](https://developers.google.com/maps/documentation/places/web-service)
 
+
+
+

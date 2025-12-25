@@ -123,7 +123,7 @@ export const HomeScreen: React.FC = () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <LogoLoader />
+        <LogoLoader showText={false} />
       </SafeAreaView>
     );
   }

@@ -3,7 +3,7 @@
  * Modern Apple-style orders list with status indicators
  */
 
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -77,6 +77,43 @@ const getStatusConfig = (t: any) => ({
   },
 });
 
+// Memoized Product Item Component
+const ProductItem = React.memo<{item: OrderItem; index: number}>(({item, index}) => {
+  const imageUrl = useMemo(() => getProductImageUrl(item.image_url), [item.image_url]);
+  
+  return (
+    <View key={index} style={styles.productItem}>
+      <View style={styles.productImageWrapper}>
+        <View style={styles.productImageContainer}>
+          {imageUrl ? (
+            <Image
+              source={{uri: imageUrl}}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.productImagePlaceholder}>
+              <Package
+                width={16}
+                height={16}
+                color={colors.text.tertiary}
+                strokeWidth={2}
+              />
+            </View>
+          )}
+        </View>
+        {/* Quantity Badge - Sağ üst köşe */}
+        <View style={styles.quantityBadge}>
+          <Text style={styles.quantityText}>{item.quantity}</Text>
+        </View>
+      </View>
+      <Text style={styles.productName} numberOfLines={2}>
+        {item.name}
+      </Text>
+    </View>
+  );
+});
+
 export const OrdersScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
@@ -87,33 +124,19 @@ export const OrdersScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  const statusConfig = getStatusConfig(t);
+  // Memoize status config
+  const statusConfig = useMemo(() => getStatusConfig(t), [t]);
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchOrders();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated, user]);
-
-  // Sayfa focus olduğunda siparişleri yeniden yükle
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (isAuthenticated && user) {
-        fetchOrders();
-      }
-    });
-    return unsubscribe;
-  }, [navigation, isAuthenticated, user]);
-
-  const fetchOrders = async () => {
+  // Memoize fetch function
+  const fetchOrders = useCallback(async () => {
+    if (!user?.id) return;
+    
     try {
       setLoading(true);
       const {data, error} = await supabase
         .from('orders')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', {ascending: false});
 
       if (error) throw error;
@@ -124,19 +147,33 @@ export const OrdersScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchOrders();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated, user, fetchOrders]);
+
+  // Sayfa focus olduğunda siparişleri yeniden yükle
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isAuthenticated && user) {
+        fetchOrders();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, isAuthenticated, user, fetchOrders]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchOrders();
     setRefreshing(false);
-  };
+  }, [fetchOrders]);
 
-  const getItemCount = (items: OrderItem[]) => {
-    return items.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
@@ -159,9 +196,9 @@ export const OrdersScreen: React.FC = () => {
         year: 'numeric',
       });
     }
-  };
+  }, [t]);
 
-  const displayOrders = orders;
+  const displayOrders = useMemo(() => orders, [orders]);
 
   // Kullanıcı giriş yapmamışsa
   if (!isAuthenticated) {
@@ -214,7 +251,7 @@ export const OrdersScreen: React.FC = () => {
 
       {/* Orders List */}
       {loading ? (
-        <LogoLoader />
+        <LogoLoader showText={false} />
       ) : displayOrders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Package width={80} height={80} color={colors.text.tertiary} />
@@ -295,42 +332,9 @@ export const OrdersScreen: React.FC = () => {
                   <View style={styles.productsSection}>
                     <Text style={styles.productsSectionTitle}>{t('orders.products')}</Text>
                     <View style={styles.productsList}>
-                      {order.items.map((item, index) => {
-                        // Image URL'yi tam URL'ye dönüştür
-                        const imageUrl = getProductImageUrl(item.image_url);
-                        
-                        return (
-                          <View key={index} style={styles.productItem}>
-                            <View style={styles.productImageWrapper}>
-                              <View style={styles.productImageContainer}>
-                                {imageUrl ? (
-                                  <Image
-                                    source={{uri: imageUrl}}
-                                    style={styles.productImage}
-                                    resizeMode="cover"
-                                  />
-                                ) : (
-                                  <View style={styles.productImagePlaceholder}>
-                                    <Package
-                                      width={16}
-                                      height={16}
-                                      color={colors.text.tertiary}
-                                      strokeWidth={2}
-                                    />
-                                  </View>
-                                )}
-                              </View>
-                              {/* Quantity Badge - Sağ üst köşe */}
-                              <View style={styles.quantityBadge}>
-                                <Text style={styles.quantityText}>{item.quantity}</Text>
-                              </View>
-                            </View>
-                            <Text style={styles.productName} numberOfLines={2}>
-                              {item.name}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                      {order.items.map((item, index) => (
+                        <ProductItem key={`${order.id}-${index}`} item={item} index={index} />
+                      ))}
                     </View>
                   </View>
 

@@ -3,7 +3,7 @@
  * Custom bottom bar navigation with ModernBottomBar
  */
 
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {useNavigation} from '@react-navigation/native';
@@ -18,6 +18,9 @@ import {ModernBottomBar} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTabNavigation} from './TabContext';
+import {useWorkingHoursContext} from '@core/contexts/WorkingHoursContext';
+import {getDeliverySettings, meetsMinimumOrderExcludingCigarettes, calculateAmountExcludingCigarettes} from '@features/cart/services/deliveryService';
+import {DeliverySettings} from '@features/cart/types';
 
 const HomeStack = createStackNavigator();
 const OrdersStack = createStackNavigator();
@@ -94,7 +97,18 @@ export const MainTabs: React.FC = () => {
   const navigation = useNavigation();
   const {items} = useCartStore();
   const {profile, canAccessAdminOrders} = useAuthStore();
+  const {isWithinWorkingHours, isEnabled: workingHoursEnabled} = useWorkingHoursContext();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
+  // Delivery settings'i yükle
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const settings = await getDeliverySettings();
+      setDeliverySettings(settings);
+    };
+    fetchSettings();
+  }, []);
 
   // Orders tab'ına yönlendirme kontrolü
   useEffect(() => {
@@ -113,9 +127,22 @@ export const MainTabs: React.FC = () => {
     checkNavigateToOrders();
   }, [setActiveTab]);
 
+  // Check if checkout is allowed (same logic as CartScreen)
+  const meetsMinOrder = meetsMinimumOrderExcludingCigarettes(items, deliverySettings);
+  const canCheckout = meetsMinOrder && (!workingHoursEnabled || isWithinWorkingHours);
+
   const handleSearch = (query: string) => {
     // @ts-ignore
     navigation.navigate('SearchResults', {query});
+  };
+
+  const handleCheckout = () => {
+    setActiveTab('Cart');
+    // Cart tab'ına geçtikten sonra checkout'a yönlendir
+    setTimeout(() => {
+      // @ts-ignore
+      navigation.navigate('Checkout');
+    }, 100);
   };
 
   // Role-based navigation artık OrdersStackNavigator içinde yapılıyor
@@ -147,6 +174,8 @@ export const MainTabs: React.FC = () => {
         onSearch={handleSearch}
         cartItemCount={cartItemCount}
         isAdmin={false} // Admin paneli askıya alındı
+        onCheckout={handleCheckout}
+        canCheckout={canCheckout}
       />
     </View>
   );

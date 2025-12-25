@@ -60,7 +60,6 @@ At DMARJET, the security of your personal information is extremely important to 
 • Email address
 • Phone number
 • Delivery address
-• Payment information (securely encrypted)
 
 ### Usage Data
 • IP address
@@ -112,7 +111,6 @@ Phone: +90 (533) 844 45 25`;
 • Адрес электронной почты
 • Номер телефона
 • Адрес доставки
-• Платежная информация (надежно зашифрована)
 
 ### Данные об использовании
 • IP-адрес
@@ -165,7 +163,6 @@ DMARJET olarak, kişisel bilgilerinizin güvenliği bizim için son derece önem
 • E-posta adresi
 • Telefon numarası
 • Teslimat adresi
-• Ödeme bilgileri (güvenli şekilde şifrelenir)
 
 ### Kullanım Verileri
 • IP adresi
@@ -237,7 +234,6 @@ DMARJET provides online grocery delivery service in the Trikomo (İskele) region
 
 ## 5. Cancellation and Return Policy
 
-• You can cancel your order before preparation begins
 • Full refund for incorrect or damaged products
 • Return requests must be made within 24 hours after delivery
 
@@ -286,7 +282,6 @@ DMARJET предоставляет услуги онлайн-доставки п
 
 ## 5. Политика отмены и возврата
 
-• Вы можете отменить заказ до начала подготовки
 • Полный возврат средств за неправильные или поврежденные товары
 • Запросы на возврат должны быть сделаны в течение 24 часов после доставки
 
@@ -336,7 +331,6 @@ DMARJET, Kuzey Kıbrıs İskele (Trikomo) bölgesinde online market teslimat hiz
 
 ## 5. İptal ve İade Politikası
 
-• Hazırlanmaya başlanmadan önce siparişinizi iptal edebilirsiniz
 • Hatalı veya hasarlı ürünler için tam iade yapılır
 • İade talepleri teslimat sonrası 24 saat içinde yapılmalıdır
 

@@ -139,10 +139,10 @@ export const CategoryProductsScreen: React.FC = () => {
 
   // Bottom bar tab change handler - MainTabs'a geri dön ve tab'ı değiştir
   const handleTabChange = (tab: string) => {
-    // CategoryProducts bir stack screen olduğu için önce tab'ı değiştir, sonra MainTabs'a geri dön
+    // Tab'ı değiştir ve MainTabs'a geri dön (mevcut instance'a)
     setActiveTab(tab);
-    // @ts-ignore
-    navigation.navigate('MainTabs');
+    // @ts-ignore - goBack ile mevcut MainTabs'a dönüyoruz, yeni instance oluşturmuyor
+    navigation.goBack();
   };
 
   // Bottom bar search handler
@@ -231,18 +231,19 @@ export const CategoryProductsScreen: React.FC = () => {
       {/* Ürünler Listesi - Sadece Bu Alan Yenilenir */}
       <View style={styles.productsContainer}>
         {productsLoading ? (
-          <LogoLoader text="Ürünler yükleniyor..." />
+          <LogoLoader showText={false} />
         ) : products && products.length > 0 ? (
           <FlatList
             data={products}
             renderItem={({item}) => {
+              // @ts-ignore - product_translations service katmanında ekleniyor
               const translation = item.product_translations?.[0];
               return (
                 <ProductCard
                   id={item.id}
                   name={translation?.name || item.name}
                   price={item.price}
-                  image_url={item.image_url}
+                  image_url={item.image_url || undefined}
                   discount={item.discount}
                   onPress={() => {
                     // @ts-ignore
@@ -285,7 +286,7 @@ export const CategoryProductsScreen: React.FC = () => {
 
       {/* Modern Bottom Bar */}
       <ModernBottomBar
-        activeTab={activeTab}
+        activeTab="" // Kategori sayfasında hiçbir tab active olmamalı
         onTabChange={handleTabChange}
         onSearch={handleBottomBarSearch}
         cartItemCount={cartItemCount}

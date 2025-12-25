@@ -9,12 +9,18 @@
           "GRADLE_OPTS": "-Dorg.gradle.jvmargs='-Xmx8192m -XX:MaxMetaspaceSize=3072m -XX:+HeapDumpOnOutOfMemoryError -XX:ReservedCodeCacheSize=512m' -Dkotlin.version=1.9.25 -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
         },
         "resourceClass": "large"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
       }
     },
     "development": {
       "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
       "ios": {
         "simulator": true
       },
@@ -28,6 +34,9 @@
       "cache": {
         "disabled": true
       },
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
       "ios": {
         "simulator": false
       },
@@ -39,11 +48,13 @@
     "production": {
       "extends": "base",
       "distribution": "store",
+      "prebuildCommand": "npx expo prebuild --clean",
       "cache": {
         "disabled": false
       },
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "android": {
         "buildType": "apk",
@@ -55,12 +66,14 @@
     },
     "production-clean": {
       "extends": "base",
+      "prebuildCommand": "npx expo prebuild --clean",
       "cache": {
         "disabled": true
       },
       "distribution": "store",
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "android": {
         "buildType": "apk",
@@ -74,9 +87,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "592QQ45TLH"
+        "appleTeamId": "VL6325FX4L"
       }
     }
   }
 }
-

@@ -225,7 +225,7 @@ export const SearchResultsScreen: React.FC = () => {
         {/* Ürünler Listesi */}
         <View style={styles.productsContainer}>
         {productsLoading ? (
-          <LogoLoader text={t('search.searching')} />
+          <LogoLoader showText={false} />
         ) : products && products.length > 0 ? (
           <FlatList
             data={products}
