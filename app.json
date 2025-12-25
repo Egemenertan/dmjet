@@ -4,7 +4,7 @@
     "slug": "dmarjet",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/dmicon.png",
+    "icon": "./assets/dmjeticon.png",
     "userInterfaceStyle": "light",
     "scheme": "dmarjet",
     "description": "Dmarjet - Kuzey Kıbrıs'ın en hızlı market teslimat uygulaması! İskele ve Trikomo bölgesinde günlük ihtiyaçlarınızı kapınıza kadar getiriyoruz. Taze gıdalar, temel ihtiyaçlar, içecekler ve daha fazlası. Hızlı teslimat, güvenli ödeme ve kolay kullanım. Siparişinizi verin, kapınızda olsun! 🛒✨",
@@ -15,15 +15,15 @@
       "advisories": ["Alcohol, Tobacco, Use or References"]
     },
     "splash": {
-      "image": "./assets/dmjet.png",
+      "image": "./assets/dmjetww.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#54B047"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dmarjet",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "requireFullScreen": false,
       "userInterfaceStyle": "light",
       "subtitle": "Hızlı Market Teslimatı",
@@ -57,7 +57,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/dmicon.png",
+        "foregroundImage": "./assets/dmjeticon.png",
         "backgroundColor": "#5CB85C"
       },
       "package": "com.dmarjet",

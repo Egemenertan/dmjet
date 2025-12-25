@@ -84,9 +84,10 @@ export const MapSelectionScreen: React.FC = () => {
   const {user, isAuthenticated, profile, setProfile} = useAuthStore();
   const mapRef = useRef<MapView>(null);
 
+  const [initialRegion] = useState<Region>(DELIVERY_AREA_CENTER); // initialRegion sabit kalmalı
   const [region, setRegion] = useState<Region>(DELIVERY_AREA_CENTER);
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Harita hemen gösterilsin
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -98,6 +99,7 @@ export const MapSelectionScreen: React.FC = () => {
   const [isLocationInDeliveryArea, setIsLocationInDeliveryArea] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
   const [isMapReady, setIsMapReady] = useState(false); // Harita hazır mı kontrolü
   const isInitialLoadRef = useRef(true); // İlk yükleme kontrolü
+  const regionCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Debounce için timeout ref
 
   // Profile'dan telefon bilgisini yükle
   useEffect(() => {
@@ -114,31 +116,23 @@ export const MapSelectionScreen: React.FC = () => {
     }
   }, [profile]);
 
-  // Kullanıcının kayıtlı konumunu yükle ve ardından GPS konumunu al
+  // Kullanıcının kayıtlı konumunu yükle (GPS konumu arka planda)
   useEffect(() => {
     let mounted = true;
     
     const initializeLocation = async () => {
       try {
-        // Debug logları silindi - production'da gereksiz
-        
+        // Kayıtlı konum varsa yükle
         if (isAuthenticated && user?.id) {
-          await loadSavedLocation();
-        } else {
-          if (mounted) {
-            setLoading(false);
+          const hasSavedLocation = await loadSavedLocation();
+          
+          // Kayıtlı konum yoksa GPS konumunu al
+          if (!hasSavedLocation && mounted) {
+            getCurrentLocation(false); // await kullanmadan arka planda çalışsın
           }
-        }
-        
-        // Kayıtlı konum yüklendikten sonra GPS konumunu otomatik al
-        if (mounted) {
-          await getCurrentLocation(false);
         }
       } catch (error: any) {
         console.error('❌ MapSelectionScreen initialization error:', error);
-        if (mounted) {
-          setLoading(false);
-        }
       }
     };
     
@@ -146,11 +140,15 @@ export const MapSelectionScreen: React.FC = () => {
     
     return () => {
       mounted = false;
+      // Cleanup timeout
+      if (regionCheckTimeoutRef.current) {
+        clearTimeout(regionCheckTimeoutRef.current);
+      }
     };
   }, [isAuthenticated, user?.id]);
 
   // Kayıtlı konumu yükle (hızlı)
-  const loadSavedLocation = async () => {
+  const loadSavedLocation = async (): Promise<boolean> => {
     try {
       if (!user?.id) {
         return false; // Kayıtlı konum yok
@@ -182,33 +180,35 @@ export const MapSelectionScreen: React.FC = () => {
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           };
-          setRegion(savedLocation);
+          
           const locationData = {
             latitude: data.location_lat,
             longitude: data.location_lng,
             address: data.address || undefined,
           };
+          
+          // State güncellemelerini batch yap
+          setRegion(savedLocation);
           setSelectedLocation(locationData);
           setSearchQuery(data.address || '');
           setAddressDetails(data.address_details || '');
           
-          // Kayıtlı konum için hizmet alanı kontrolü - harita hazır olduktan sonra
-          const checkDeliveryArea = () => {
-            if (isMapReady && !isInitialLoadRef.current) {
+          // Harita animasyonu ile konuma git
+          if (mapRef.current) {
+            setTimeout(() => {
+              mapRef.current?.animateToRegion(savedLocation, 500);
+            }, 100);
+          }
+          
+          // Hizmet alanı kontrolü - harita hazır olduktan sonra
+          setTimeout(() => {
+            if (isMapReady) {
               const inDeliveryArea = isInDeliveryArea(locationData);
               setIsLocationInDeliveryArea(inDeliveryArea);
-            } else {
-              // Harita henüz hazır değilse tekrar dene
-              setTimeout(checkDeliveryArea, 200);
             }
-          };
-          setTimeout(checkDeliveryArea, 500);
+          }, 600);
           
           return true; // Kayıtlı konum var
-        } else {
-          // Konum yoksa GPS konumu alınacak
-          // Debug log silindi - production'da gereksiz
-          return false;
         }
       }
       return false;
@@ -224,8 +224,6 @@ export const MapSelectionScreen: React.FC = () => {
     }
 
     try {
-      // Debug log silindi - production'da gereksiz
-      
       // Konum izni iste
       const {status} = await Location.requestForegroundPermissionsAsync();
       
@@ -237,23 +235,18 @@ export const MapSelectionScreen: React.FC = () => {
             'Konumunuzu kullanabilmek için konum iznine ihtiyacımız var.',
             [
               {text: 'Tamam', onPress: () => {
-                setLoading(false);
                 setGettingLocation(false);
               }},
             ]
           );
-        } else {
-          // Otomatik çağrıda sessizce geç
-          // Debug log silindi - production'da gereksiz
-          setLoading(false);
         }
         return;
       }
 
-      // Mevcut konumu al - Balanced accuracy ve timeout ile daha hızlı
+      // Mevcut konumu al - Balanced accuracy ile daha hızlı
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced, // High yerine Balanced - daha hızlı
-        timeInterval: 5000, // 5 saniye timeout
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 3000, // 3 saniye timeout - daha hızlı
         distanceInterval: 0,
       });
 
@@ -272,31 +265,26 @@ export const MapSelectionScreen: React.FC = () => {
         location.coords.longitude <= NORTH_CYPRUS_BOUNDS.maxLng;
 
       if (isInNorthCyprus) {
-        setRegion(userLocation);
         const locationData = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         };
+        
+        setRegion(userLocation);
         setSelectedLocation(locationData);
 
-        // Manuel kullanımda haritayı animate et
-        if (isManual && mapRef.current) {
-          mapRef.current.animateToRegion(userLocation, 1000);
+        // Haritayı animate et
+        if (mapRef.current) {
+          mapRef.current.animateToRegion(userLocation, isManual ? 1000 : 500);
         }
         
-        // GPS konumu için hizmet alanı kontrolü - harita hazır olduktan sonra
-        const checkDeliveryArea = () => {
-          if (isMapReady && !isInitialLoadRef.current) {
+        // Hizmet alanı kontrolü
+        setTimeout(() => {
+          if (isMapReady) {
             const inDeliveryArea = isInDeliveryArea(locationData);
             setIsLocationInDeliveryArea(inDeliveryArea);
-          } else {
-            // Harita henüz hazır değilse tekrar dene
-            setTimeout(checkDeliveryArea, 200);
           }
-        };
-        setTimeout(checkDeliveryArea, isManual ? 1100 : 500);
-        
-        // Debug log silindi - production'da gereksiz
+        }, isManual ? 1100 : 600);
       } else {
         // Kuzey Kıbrıs dışındaysa merkez konumu göster
         if (isManual) {
@@ -305,33 +293,29 @@ export const MapSelectionScreen: React.FC = () => {
             'Şu anda Kuzey Kıbrıs dışındasınız. Harita Kuzey Kıbrıs merkezinde açılacak.',
             [{text: 'Tamam'}]
           );
-        } else {
-          // Debug log silindi - production'da gereksiz
         }
       }
     } catch (error) {
       console.error('Konum alınamadı:', error);
       if (isManual) {
         Alert.alert('Hata', 'Konumunuz alınamadı. Lütfen tekrar deneyin.');
-      } else {
-        // Debug log silindi - production'da gereksiz
       }
     } finally {
-      setLoading(false);
       setGettingLocation(false);
     }
   };
 
   // Harita hazır olduğunda
   const handleMapReady = () => {
+    console.log('✅ Map is ready');
     setIsMapReady(true);
     // Harita hazır olduktan sonra kısa bir gecikme ile ilk kontrolü yap
     setTimeout(() => {
       isInitialLoadRef.current = false;
-    }, 500);
+    }, 300);
   };
 
-  // Harita hareket ettiğinde merkez konumu güncelle
+  // Harita hareket ettiğinde merkez konumu güncelle - DEBOUNCED
   const handleRegionChangeComplete = (newRegion: Region) => {
     // İlk yükleme sırasında veya harita hazır değilse kontrolü atla
     if (isInitialLoadRef.current || !isMapReady) {
@@ -344,21 +328,22 @@ export const MapSelectionScreen: React.FC = () => {
       latitude: newRegion.latitude,
       longitude: newRegion.longitude,
     };
+    setSelectedLocation(newLocation);
+    
+    // Önceki timeout'u temizle (debounce)
+    if (regionCheckTimeoutRef.current) {
+      clearTimeout(regionCheckTimeoutRef.current);
+    }
     
     // Teslimat alanı kontrolü - debounce ile gecikme ekle
-    setTimeout(() => {
+    regionCheckTimeoutRef.current = setTimeout(() => {
       const inDeliveryArea = isInDeliveryArea(newLocation);
-      // Debug log silindi - production'da gereksiz
       setIsLocationInDeliveryArea(inDeliveryArea);
-    }, 300); // 300ms gecikme ile kontrol et
-    
-    setSelectedLocation(newLocation);
+    }, 400); // 400ms debounce - kullanıcı haritayı kaydırmayı bitirene kadar bekle
   };
 
   // Adres seçildiğinde
   const handleLocationSelect = (location: LocationData) => {
-    // Debug log silindi - production'da gereksiz
-    
     const newRegion = {
       latitude: location.latitude,
       longitude: location.longitude,
@@ -373,17 +358,13 @@ export const MapSelectionScreen: React.FC = () => {
     // Haritayı seçilen konuma taşı
     mapRef.current?.animateToRegion(newRegion, 500);
     
-    // Teslimat alanı kontrolü - harita animasyonu bittikten sonra
-    const checkDeliveryArea = () => {
-      if (isMapReady && !isInitialLoadRef.current) {
+    // Teslimat alanı kontrolü - animasyon bittikten sonra
+    setTimeout(() => {
+      if (isMapReady) {
         const inDeliveryArea = isInDeliveryArea(location);
         setIsLocationInDeliveryArea(inDeliveryArea);
-      } else {
-        // Harita henüz hazır değilse tekrar dene
-        setTimeout(checkDeliveryArea, 200);
       }
-    };
-    setTimeout(checkDeliveryArea, 600); // Animasyon süresi + 100ms
+    }, 600);
   };
 
   // Konum onaylama
@@ -593,48 +574,57 @@ export const MapSelectionScreen: React.FC = () => {
 
             {/* Map */}
             <View style={styles.mapContainer}>
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={styles.loadingText}>Konum alınıyor...</Text>
-                </View>
-              ) : (
-                <>
-                  <MapView
-                    ref={mapRef}
-                    provider={PROVIDER_GOOGLE}
-                    style={styles.map}
-                    initialRegion={region}
-                    onMapReady={handleMapReady}
-                    onRegionChangeComplete={handleRegionChangeComplete}
-                    mapType="standard"
-                    showsUserLocation
-                    showsMyLocationButton
-                    showsCompass
-                    toolbarEnabled={false}
-                    loadingEnabled={true}
-                    loadingIndicatorColor={colors.primary}
-                    loadingBackgroundColor={colors.background}
-                  >
-                    {/* Teslimat Alanı Polygon */}
-                    <Polygon
-                      coordinates={DELIVERY_AREA_POLYGON}
-                      fillColor="rgba(0, 122, 255, 0.15)"
-                      strokeColor="rgba(0, 122, 255, 0.8)"
-                      strokeWidth={2}
-                    />
-                  </MapView>
-                  
-                  {/* Fixed Center Pin - Google Maps Tarzı */}
-                  <View style={styles.centerMarker} pointerEvents="none">
-                    <View style={styles.googlePin}>
-                      <View style={styles.googlePinHead}>
-                        <View style={styles.googlePinDot} />
-                      </View>
-                      <View style={styles.googlePinTail} />
-                    </View>
+              <MapView
+                ref={mapRef}
+                provider={PROVIDER_GOOGLE}
+                style={styles.map}
+                initialRegion={initialRegion}
+                onMapReady={handleMapReady}
+                onRegionChangeComplete={handleRegionChangeComplete}
+                mapType="standard"
+                showsUserLocation={true}
+                showsMyLocationButton={false}
+                showsCompass={true}
+                toolbarEnabled={false}
+                loadingEnabled={true}
+                loadingIndicatorColor={colors.primary}
+                loadingBackgroundColor={colors.background}
+                moveOnMarkerPress={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+                scrollEnabled={true}
+                zoomEnabled={true}
+                minZoomLevel={10}
+                maxZoomLevel={18}
+              >
+                {/* Teslimat Alanı Polygon - Memoized */}
+                {isMapReady && (
+                  <Polygon
+                    coordinates={DELIVERY_AREA_POLYGON}
+                    fillColor="rgba(0, 122, 255, 0.15)"
+                    strokeColor="rgba(0, 122, 255, 0.8)"
+                    strokeWidth={2}
+                    tappable={false}
+                  />
+                )}
+              </MapView>
+              
+              {/* Fixed Center Pin - Google Maps Tarzı */}
+              <View style={styles.centerMarker} pointerEvents="none">
+                <View style={styles.googlePin}>
+                  <View style={styles.googlePinHead}>
+                    <View style={styles.googlePinDot} />
                   </View>
-                </>
+                  <View style={styles.googlePinTail} />
+                </View>
+              </View>
+              
+              {/* Loading Overlay - Sadece ilk yüklemede */}
+              {!isMapReady && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Harita yükleniyor...</Text>
+                </View>
               )}
             </View>
 
@@ -882,6 +872,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    zIndex: 10,
   },
   loadingText: {
     marginTop: spacing.md,

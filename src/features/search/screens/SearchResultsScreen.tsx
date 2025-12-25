@@ -179,10 +179,10 @@ export const SearchResultsScreen: React.FC = () => {
 
   // Handle tab change
   const handleTabChange = (tab: string) => {
-    // SearchResults bir stack screen olduğu için önce tab'ı değiştir, sonra MainTabs'a geri dön
+    // Tab'ı değiştir ve MainTabs'a geri dön (mevcut instance'a)
     setActiveTab(tab);
-    // @ts-ignore
-    navigation.navigate('MainTabs');
+    // @ts-ignore - goBack ile mevcut MainTabs'a dönüyoruz, yeni instance oluşturmuyor
+    navigation.goBack();
   };
 
   // Render footer (loading indicator)
@@ -316,7 +316,7 @@ export const SearchResultsScreen: React.FC = () => {
 
       {/* Modern Bottom Bar */}
       <ModernBottomBar
-        activeTab={activeTab}
+        activeTab="" // Arama sayfasında hiçbir tab active olmamalı
         onTabChange={handleTabChange}
         onSearch={handleBottomBarSearch}
         cartItemCount={cartItemCount}

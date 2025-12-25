@@ -89,11 +89,35 @@ export const HomeScreen: React.FC = () => {
     // You can add navigation or other actions here in the future
   }, []);
 
+  // Banner action button handler - Meyve & Sebze kategorisine yönlendir
+  const handleBannerAction = useCallback((banner: any) => {
+    // Kategoriler yüklendiyse, "Meyve & Sebze" kategorisini bul
+    if (categories && categories.length > 0) {
+      // Kategori isminde "meyve" veya "sebze" geçen kategoriyi bul
+      const fruitVegCategory = categories.find((cat: any) => 
+        cat.name?.toLowerCase().includes('meyve') || 
+        cat.name?.toLowerCase().includes('sebze')
+      );
+      
+      if (fruitVegCategory) {
+        handleCategoryPress(fruitVegCategory.id, fruitVegCategory.name);
+      } else {
+        // Bulunamazsa ilk kategoriyi göster (fallback)
+        const firstCategory = categories[0];
+        if (firstCategory) {
+          handleCategoryPress(firstCategory.id, firstCategory.name);
+        }
+      }
+    }
+  }, [categories, handleCategoryPress]);
+
   // Banner verisi - memoized, her render'da yeniden oluşturulmaz
   const demoBanners = useMemo(() => [
     {
       id: '1',
       image_source: require('../../../../assets/banner.png'),
+      showActionButton: true, // Action button'u göster
+      actionButtonText: undefined, // Ok ikonu kullanılacak
     },
   ], []);
 
@@ -216,6 +240,7 @@ export const HomeScreen: React.FC = () => {
         <BannerCarousel 
           banners={demoBanners} 
           onBannerPress={handleBannerPress}
+          onActionPress={handleBannerAction}
           autoScroll={false}
         />
 

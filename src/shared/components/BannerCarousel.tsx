@@ -25,17 +25,21 @@ interface Banner {
   image_url?: string;
   image_source?: any; // Local asset için
   link?: string;
+  showActionButton?: boolean;
+  actionButtonText?: string;
 }
 
 interface BannerCarouselProps {
   banners: Banner[];
   onBannerPress?: (banner: Banner) => void;
+  onActionPress?: (banner: Banner) => void; // Action button için callback
   autoScroll?: boolean;
 }
 
 export const BannerCarousel: React.FC<BannerCarouselProps> = memo(({
   banners,
   onBannerPress,
+  onActionPress,
   autoScroll = true,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
@@ -121,6 +125,9 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = memo(({
             image_url={banner.image_url}
             image_source={banner.image_source}
             onPress={() => onBannerPress?.(banner)}
+            showActionButton={banner.showActionButton}
+            actionButtonText={banner.actionButtonText}
+            onActionPress={() => onActionPress?.(banner)}
           />
         ))}
       </ScrollView>

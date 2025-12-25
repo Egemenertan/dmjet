@@ -8,7 +8,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -67,8 +67,8 @@ const getStatusConfig = (t: any) => ({
   },
   delivered: {
     label: t('orders.delivered'),
-    color: '#059669', // Koyu yeşil
-    bgColor: '#a7f3d0', // Mint yeşil
+    color: colors.primary, // Primary color
+    bgColor: colors.primary + '20', // Açık primary
   },
   cancelled: {
     label: t('orders.cancelled'),
@@ -114,6 +114,8 @@ const ProductItem = React.memo<{item: OrderItem; index: number}>(({item, index})
   );
 });
 
+const ORDERS_PER_PAGE = 7;
+
 export const OrdersScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
@@ -123,53 +125,91 @@ export const OrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   
   // Memoize status config
   const statusConfig = useMemo(() => getStatusConfig(t), [t]);
 
-  // Memoize fetch function
-  const fetchOrders = useCallback(async () => {
+  // Memoize fetch function - Initial load
+  const fetchOrders = useCallback(async (reset: boolean = false) => {
     if (!user?.id) return;
     
     try {
-      setLoading(true);
-      const {data, error} = await supabase
+      if (reset) {
+        setLoading(true);
+        setPage(0);
+        setHasMore(true);
+      }
+
+      const currentPage = reset ? 0 : page;
+      const from = currentPage * ORDERS_PER_PAGE;
+      const to = from + ORDERS_PER_PAGE - 1;
+
+      const {data, error, count} = await supabase
         .from('orders')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('user_id', user.id)
-        .order('created_at', {ascending: false});
+        .order('created_at', {ascending: false})
+        .range(from, to);
 
       if (error) throw error;
 
-      setOrders(data || []);
+      const newOrders = data || [];
+      
+      if (reset) {
+        setOrders(newOrders);
+      } else {
+        setOrders(prev => [...prev, ...newOrders]);
+      }
+
+      // Check if there are more orders
+      const totalFetched = reset ? newOrders.length : orders.length + newOrders.length;
+      setHasMore(count ? totalFetched < count : false);
+      
+      if (!reset) {
+        setPage(prev => prev + 1);
+      }
     } catch (error) {
       console.error('Siparişler yüklenemedi:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [user?.id]);
+  }, [user?.id, page, orders.length]);
+
+  // Load more orders
+  const loadMoreOrders = useCallback(async () => {
+    if (loadingMore || !hasMore || loading) return;
+    
+    setLoadingMore(true);
+    await fetchOrders(false);
+  }, [loadingMore, hasMore, loading, fetchOrders]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchOrders();
+      fetchOrders(true);
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated, user, fetchOrders]);
+  }, [isAuthenticated, user]);
 
   // Sayfa focus olduğunda siparişleri yeniden yükle
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (isAuthenticated && user) {
-        fetchOrders();
+        setPage(0);
+        fetchOrders(true);
       }
     });
     return unsubscribe;
-  }, [navigation, isAuthenticated, user, fetchOrders]);
+  }, [navigation, isAuthenticated, user]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchOrders();
+    setPage(0);
+    await fetchOrders(true);
     setRefreshing(false);
   }, [fetchOrders]);
 
@@ -198,7 +238,128 @@ export const OrdersScreen: React.FC = () => {
     }
   }, [t]);
 
-  const displayOrders = useMemo(() => orders, [orders]);
+  // Render order card
+  const renderOrderCard = useCallback(({item: order}: {item: Order}) => {
+    const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || {
+      label: order.status,
+      color: colors.text.secondary,
+      bgColor: colors.background,
+    };
+
+    return (
+      <View style={styles.orderCard}>
+        {/* Status Badge - Arka plan rengi ile */}
+        <View
+          style={[
+            styles.statusBadge,
+            {backgroundColor: statusInfo.bgColor},
+          ]}
+        >
+          <Text
+            style={[styles.statusText, {color: statusInfo.color}]}
+          >
+            {statusInfo.label}
+          </Text>
+        </View>
+
+        {/* Order Info */}
+        <View style={styles.orderInfo}>
+          <View style={styles.orderHeader}>
+            <Text style={styles.orderNumber}>
+              {t('orders.orderPrefix')}{order.id.slice(0, 8).toUpperCase()}
+            </Text>
+            <Text style={styles.orderDate}>
+              {formatDate(order.created_at)}
+            </Text>
+          </View>
+
+          {/* Address */}
+          {order.shipping_address?.address && (
+            <View style={styles.addressRow}>
+              <Pin
+                width={16}
+                height={16}
+                color={colors.text.secondary}
+                strokeWidth={2}
+              />
+              <Text style={styles.addressText} numberOfLines={2}>
+                {order.shipping_address.address}
+              </Text>
+            </View>
+          )}
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Products List - Küçük resimlerle */}
+          <View style={styles.productsSection}>
+            <Text style={styles.productsSectionTitle}>{t('orders.products')}</Text>
+            <View style={styles.productsList}>
+              {order.items.map((item, index) => (
+                <ProductItem key={`${order.id}-${index}`} item={item} index={index} />
+              ))}
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Footer */}
+          <View style={styles.orderFooter}>
+            <View style={styles.paymentMethod}>
+              {order.payment_method === 'card' ? (
+                <CreditCard
+                  width={18}
+                  height={18}
+                  color={colors.text.secondary}
+                  strokeWidth={2}
+                />
+              ) : (
+                <Cash
+                  width={18}
+                  height={18}
+                  color={colors.text.secondary}
+                  strokeWidth={2}
+                />
+              )}
+              <Text style={styles.paymentLabel}>
+                {order.payment_method === 'card' ? t('orders.card') : t('orders.cash')}
+              </Text>
+            </View>
+            <Text style={styles.totalAmount}>
+              ₺{order.total_amount.toFixed(2)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }, [statusConfig, formatDate, t]);
+
+  // Footer component for loading more
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }, [loadingMore]);
+
+  // Empty component
+  const renderEmpty = useCallback(() => {
+    if (loading) return null;
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <Package width={80} height={80} color={colors.text.tertiary} />
+        <Text style={styles.emptyTitle}>{t('orders.noOrders')}</Text>
+        <Text style={styles.emptyText}>
+          {t('orders.noOrdersText')}
+        </Text>
+      </View>
+    );
+  }, [loading, t]);
 
   // Kullanıcı giriş yapmamışsa
   if (!isAuthenticated) {
@@ -252,18 +413,12 @@ export const OrdersScreen: React.FC = () => {
       {/* Orders List */}
       {loading ? (
         <LogoLoader showText={false} />
-      ) : displayOrders.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Package width={80} height={80} color={colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>{t('orders.noOrders')}</Text>
-          <Text style={styles.emptyText}>
-            {t('orders.noOrdersText')}
-          </Text>
-        </View>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+        <FlatList
+          data={orders}
+          renderItem={renderOrderCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -272,106 +427,11 @@ export const OrdersScreen: React.FC = () => {
               tintColor={colors.primary}
             />
           }
-        >
-          {displayOrders.map((order) => {
-            const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || {
-              label: order.status,
-              color: colors.text.secondary,
-              bgColor: colors.background,
-            };
-
-            return (
-              <View
-                key={order.id}
-                style={styles.orderCard}
-              >
-                {/* Status Badge - Arka plan rengi ile */}
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {backgroundColor: statusInfo.bgColor},
-                  ]}
-                >
-                  <Text
-                    style={[styles.statusText, {color: statusInfo.color}]}
-                  >
-                    {statusInfo.label}
-                  </Text>
-                </View>
-
-                {/* Order Info */}
-                <View style={styles.orderInfo}>
-                  <View style={styles.orderHeader}>
-                    <Text style={styles.orderNumber}>
-                      {t('orders.orderPrefix')}{order.id.slice(0, 8).toUpperCase()}
-                    </Text>
-                    <Text style={styles.orderDate}>
-                      {formatDate(order.created_at)}
-                    </Text>
-                  </View>
-
-                  {/* Address */}
-                  {order.shipping_address?.address && (
-                    <View style={styles.addressRow}>
-                      <Pin
-                        width={16}
-                        height={16}
-                        color={colors.text.secondary}
-                        strokeWidth={2}
-                      />
-                      <Text style={styles.addressText} numberOfLines={2}>
-                        {order.shipping_address.address}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Divider */}
-                  <View style={styles.divider} />
-
-                  {/* Products List - Küçük resimlerle */}
-                  <View style={styles.productsSection}>
-                    <Text style={styles.productsSectionTitle}>{t('orders.products')}</Text>
-                    <View style={styles.productsList}>
-                      {order.items.map((item, index) => (
-                        <ProductItem key={`${order.id}-${index}`} item={item} index={index} />
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Divider */}
-                  <View style={styles.divider} />
-
-                  {/* Footer */}
-                  <View style={styles.orderFooter}>
-                    <View style={styles.paymentMethod}>
-                      {order.payment_method === 'card' ? (
-                        <CreditCard
-                          width={18}
-                          height={18}
-                          color={colors.text.secondary}
-                          strokeWidth={2}
-                        />
-                      ) : (
-                        <Cash
-                          width={18}
-                          height={18}
-                          color={colors.text.secondary}
-                          strokeWidth={2}
-                        />
-                      )}
-                      <Text style={styles.paymentLabel}>
-                        {order.payment_method === 'card' ? t('orders.card') : t('orders.cash')}
-                      </Text>
-                    </View>
-                    <Text style={styles.totalAmount}>
-                      ₺{order.total_amount.toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
+          onEndReached={loadMoreOrders}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+        />
       )}
     </SafeAreaView>
   );
@@ -450,12 +510,14 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.text.inverse,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
+  listContent: {
     padding: spacing.lg,
     paddingBottom: 120, // Bottom bar için alan
+  },
+  footerLoader: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   orderCard: {
     backgroundColor: '#fff',
@@ -468,7 +530,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
@@ -478,7 +540,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
   orderInfo: {
     padding: spacing.lg,

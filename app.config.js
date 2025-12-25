@@ -80,7 +80,7 @@ export default {
     owner: 'egemenertan',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/dmicon.png',
+    icon: './assets/dmjett.png',
     userInterfaceStyle: 'light',
     scheme: 'dmarjet',
     description:
@@ -112,9 +112,9 @@ export default {
       advisories: ['Alcohol, Tobacco, Use or References'],
     },
     splash: {
-      image: './assets/dmjet.png',
+      image: './assets/dmjetww.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#54B047',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
@@ -138,18 +138,18 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/dmicon.png',
+        foregroundImage: './assets/dmjett.png',
         backgroundColor: '#5CB85C',
       },
       splash: {
-        image: './assets/dmjet.png',
+        image: './assets/dmjetww.png',
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
-        mdpi: './assets/dmjet.png',
-        hdpi: './assets/dmjet.png',
-        xhdpi: './assets/dmjet.png',
-        xxhdpi: './assets/dmjet.png',
-        xxxhdpi: './assets/dmjet.png',
+        backgroundColor: '#54B047',
+        mdpi: './assets/dmjetww.png',
+        hdpi: './assets/dmjetww.png',
+        xhdpi: './assets/dmjetww.png',
+        xxhdpi: './assets/dmjetww.png',
+        xxxhdpi: './assets/dmjetww.png',
       },
       package: 'com.dmarjet',
       permissions: [
@@ -199,7 +199,7 @@ export default {
       [
         'expo-notifications',
         {
-          icon: './assets/dmicon.png',
+          icon: './assets/dmjett.png',
           color: '#ffffff',
           mode: 'production',
         },

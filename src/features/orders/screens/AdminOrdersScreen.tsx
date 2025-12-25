@@ -53,8 +53,8 @@ const getStatusConfig = (t: any) => ({
   },
   delivered: {
     label: t('orders.delivered'),
-    color: colors.success,
-    bgColor: colors.success + '20',
+    color: colors.primary,
+    bgColor: colors.primary + '20',
   },
   cancelled: {
     label: t('orders.cancelled'),
@@ -1342,29 +1342,20 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
     borderRadius: borderRadius.lg,
     margin: spacing.sm,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 0,
-        borderWidth: 0,
-      },
+      
+   
     }),
   },
   statusText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
-    flex: 1,
   },
   dropdownMenu: {
     marginHorizontal: spacing.sm,

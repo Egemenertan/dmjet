@@ -37,6 +37,8 @@ public class AppDelegate: ExpoAppDelegate {
 // @generated begin react-native-maps-init - expo prebuild (DO NOT MODIFY) sync-70f14e5e24a8acc87eda12a01f2f7a93c9118a2e
 #if canImport(GoogleMaps)
 GMSServices.provideAPIKey("AIzaSyCZrEKEIc0Acu__cZuNG86-Y6mhFH99fLI")
+// Google Maps performans optimizasyonları
+GMSServices.setMetalRendererEnabled(true) // Metal renderer - daha hızlı rendering
 #endif
 // @generated end react-native-maps-init
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
