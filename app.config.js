@@ -118,7 +118,7 @@ export default {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: 'com.dmarjet',
       subtitle: 'Hızlı Market Teslimatı',
       config: {

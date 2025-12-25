@@ -21,9 +21,9 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.dmarjet",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "requireFullScreen": false,
       "userInterfaceStyle": "light",
       "subtitle": "Hızlı Market Teslimatı",
