@@ -5,11 +5,11 @@
  */
 
 import React, {useState, useEffect, memo} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Animated} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Animated, Alert} from 'react-native';
 import { Trash } from 'iconoir-react-native';
 import {colors, spacing, borderRadius, fontSize, fontWeight} from '@core/constants';
 import {Button} from '@shared/ui';
-import {useCartStore} from '@store/slices/cartStore';
+import {useCartStore, MAX_QUANTITY_PER_PRODUCT} from '@store/slices/cartStore';
 import {useTranslation} from '@localization';
 import {OptimizedImage} from '@shared/components/OptimizedImage';
 
@@ -58,6 +58,15 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
   };
 
   const handleIncrement = () => {
+    // Check if we're at the limit
+    if (quantity >= MAX_QUANTITY_PER_PRODUCT) {
+      Alert.alert(
+        t('cart.maxQuantityTitle'),
+        t('cart.maxQuantityMessage', {max: MAX_QUANTITY_PER_PRODUCT.toString()}),
+        [{text: t('common.ok')}]
+      );
+      return;
+    }
     updateQuantity(id, quantity + 1);
   };
 

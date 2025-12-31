@@ -25,12 +25,105 @@ export const authService = {
    * Login with email and password
    */
   async login(credentials: LoginCredentials) {
+    // Get device info for ban check
+    const {getDeviceInfo} = await import('@core/utils/deviceInfo');
+    const deviceInfo = await getDeviceInfo();
+
+    // Check if device, IP, or email is banned BEFORE login
+    const {data: banCheck, error: banError} = await supabase.rpc('is_device_banned', {
+      p_device_id: deviceInfo.deviceId,
+      p_ip_address: deviceInfo.ip || '0.0.0.0',
+      p_email: credentials.email,
+      p_phone: null
+    });
+
+    if (!banError && banCheck?.[0]?.is_banned) {
+      const ban = banCheck[0];
+      const expiryText = ban.expires_at 
+        ? `\n\nBan süresi: ${new Date(ban.expires_at).toLocaleDateString()}`
+        : '\n\nKalıcı ban';
+      
+      throw new Error(`🚫 Hesabınız engellenmiştir.\n\nSebep: ${ban.ban_reason}${expiryText}\n\nDestek için iletişime geçin.`);
+    }
+
+    // Proceed with login
     const {data, error} = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
     });
 
     if (error) throw error;
+
+    // ✅ DEVICE SECURITY CHECK (Admin/Courier/Picker için)
+    if (data.user) {
+      // Profili al
+      const {data: profile} = await supabase
+        .from('profiles')
+        .select('role, device_id')
+        .eq('id', data.user.id)
+        .single();
+
+      // Admin/Courier/Picker için device kontrolü
+      if (profile?.role && ['admin', 'courier', 'picker'].includes(profile.role)) {
+        const {deviceSecurityService} = await import('@core/services/deviceSecurity');
+        
+        try {
+          const deviceCheck = await deviceSecurityService.checkAndUpdateDevice();
+          
+          if (!deviceCheck.allowed) {
+            // Farklı cihaz tespit edildi, giriş engellendi
+            await supabase.auth.signOut();
+            
+            throw new Error(
+              `🔐 YENİ CİHAZ TESPİT EDİLDİ!\n\n` +
+              `Bu cihazdan ilk kez giriş yapıyorsunuz.\n\n` +
+              `Email adresinize onay linki gönderildi.\n` +
+              `Lütfen email'inizi kontrol edin ve "Onayla" butonuna tıklayın.\n\n` +
+              `Onayladıktan sonra tekrar giriş yapabilirsiniz.`
+            );
+          }
+        } catch (deviceError: any) {
+          // Device kontrolü başarısız olursa da giriş engelle
+          await supabase.auth.signOut();
+          throw new Error(
+            deviceError.message || 
+            'Cihaz güvenlik kontrolü başarısız oldu. Lütfen tekrar deneyin.'
+          );
+        }
+      }
+
+      // Normal kullanıcılar için sadece device bilgilerini güncelle
+      await supabase
+        .from('profiles')
+        .update({
+          last_login_device: deviceInfo.deviceId,
+          last_login_ip: deviceInfo.ip,
+          last_login_at: new Date().toISOString(),
+        })
+        .eq('id', data.user.id);
+
+      // Count accounts from this device
+      const {data: users} = await supabase.rpc('count_accounts_by_device', {
+        p_device_id: deviceInfo.deviceId
+      });
+
+      const accountCount = users?.[0]?.count || 0;
+      
+      // If 3+ accounts, ban device and all accounts
+      if (accountCount >= 3) {
+        await supabase.rpc('ban_multi_account_device', {
+          p_device_id: deviceInfo.deviceId,
+          p_ip_address: deviceInfo.ip || '0.0.0.0',
+          p_current_email: credentials.email
+        });
+
+        // Logout immediately
+        await supabase.auth.signOut();
+        
+        throw new Error(`🚫 Çoklu hesap tespit edildi!\n\nBu cihazdan ${accountCount} hesap açılmış. Güvenlik nedeniyle tüm hesaplar engellenmiştir.\n\nDestek için iletişime geçin.`);
+      }
+    }
+
     return data;
   },
 
@@ -206,6 +299,34 @@ export const authService = {
    * Register new user
    */
   async register(credentials: RegisterCredentials) {
+    // Get device info for multi-account detection
+    const {getDeviceInfo} = await import('@core/utils/deviceInfo');
+    const deviceInfo = await getDeviceInfo();
+
+    // Check if device is already banned
+    const {data: banCheck, error: banError} = await supabase.rpc('is_device_banned', {
+      p_device_id: deviceInfo.deviceId,
+      p_ip_address: deviceInfo.ip || '0.0.0.0',
+      p_email: null,
+      p_phone: null
+    });
+
+    if (!banError && banCheck?.[0]?.is_banned) {
+      const ban = banCheck[0];
+      throw new Error(`🚫 Bu cihaz engellenmiştir.\n\nSebep: ${ban.ban_reason}\n\nYeni hesap açamazsınız.`);
+    }
+
+    // Check multi-account BEFORE registration
+    const {data: accountCount} = await supabase.rpc('count_accounts_by_device', {
+      p_device_id: deviceInfo.deviceId
+    });
+
+    const count = accountCount?.[0]?.count || 0;
+    
+    if (count >= 3) {
+      throw new Error(`🚫 Çoklu hesap sınırı aşıldı!\n\nBu cihazdan ${count} hesap mevcut. Maksimum 3 hesap açılabilir.\n\nMevcut hesaplarınızdan birini kullanın.`);
+    }
+
     const {data, error} = await supabase.auth.signUp({
       email: credentials.email,
       password: credentials.password,
@@ -217,6 +338,45 @@ export const authService = {
     });
 
     if (error) throw error;
+
+    // After successful registration, update profile with device info
+    if (data.user) {
+      // Wait a bit for profile to be created
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Update profile with device info
+      await supabase
+        .from('profiles')
+        .update({
+          device_id: deviceInfo.deviceId,
+          last_login_device: deviceInfo.deviceId,
+          last_login_ip: deviceInfo.ip,
+          last_login_at: new Date().toISOString(),
+        })
+        .eq('id', data.user.id);
+
+      // Check if this was the 3rd account
+      const {data: newCount} = await supabase.rpc('count_accounts_by_device', {
+        p_device_id: deviceInfo.deviceId
+      });
+
+      const totalCount = newCount?.[0]?.count || 0;
+      
+      if (totalCount >= 3) {
+        // Ban device and all accounts
+        await supabase.rpc('ban_multi_account_device', {
+          p_device_id: deviceInfo.deviceId,
+          p_ip_address: deviceInfo.ip || '0.0.0.0',
+          p_current_email: credentials.email
+        });
+
+        // Logout immediately
+        await supabase.auth.signOut();
+        
+        throw new Error(`🚫 Çoklu hesap tespit edildi!\n\nBu cihazdan ${totalCount}. hesap açıldı. Güvenlik nedeniyle tüm hesaplar engellenmiştir.\n\nDestek için iletişime geçin.`);
+      }
+    }
+
     return data;
   },
 

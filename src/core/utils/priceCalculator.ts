@@ -7,7 +7,7 @@
  * Calculate final price with profit margin
  * @param sellPrice - Stock sell price from database
  * @param profitMargin - Profit margin percentage (0-100)
- * @returns Final price with profit margin applied
+ * @returns Final price with profit margin applied, rounded up to nearest whole number
  */
 export const calculateFinalPrice = (
   sellPrice: number,
@@ -20,8 +20,8 @@ export const calculateFinalPrice = (
   // Kar marjını ekle: sellPrice * (1 + profitMargin / 100)
   const finalPrice = sellPrice * (1 + profitMargin / 100);
   
-  // 2 ondalık basamağa yuvarla
-  return Math.round(finalPrice * 100) / 100;
+  // Tam sayıya yuvarla (yukarı yuvarla - 90.01 -> 91, 90.99 -> 91)
+  return Math.ceil(finalPrice);
 };
 
 /**
@@ -54,6 +54,7 @@ export const calculateProfitMarginFromPrices = (
   const profitMargin = ((finalPrice - sellPrice) / sellPrice) * 100;
   return Math.round(profitMargin * 100) / 100;
 };
+
 
 
 

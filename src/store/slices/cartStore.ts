@@ -7,6 +7,9 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Maximum quantity per product for security
+export const MAX_QUANTITY_PER_PRODUCT = 10;
+
 export interface CartItem {
   id: string;
   name: string;
@@ -55,9 +58,16 @@ export const useCartStore = create<CartState>()(
           let updatedItems: CartItem[];
 
           if (existingItem) {
+            // Check if adding one more would exceed the limit
+            if (existingItem.quantity >= MAX_QUANTITY_PER_PRODUCT) {
+              // Don't update, just return current state
+              // Alert will be shown in the component
+              return state;
+            }
+            
             updatedItems = state.items.map((item) =>
               item.id === newItem.id
-                ? {...item, quantity: item.quantity + 1}
+                ? {...item, quantity: Math.min(item.quantity + 1, MAX_QUANTITY_PER_PRODUCT)}
                 : item
             );
           } else {
@@ -85,8 +95,11 @@ export const useCartStore = create<CartState>()(
             return get().removeItem(itemId), state;
           }
 
+          // Enforce maximum quantity limit
+          const limitedQuantity = Math.min(quantity, MAX_QUANTITY_PER_PRODUCT);
+
           const updatedItems = state.items.map((item) =>
-            item.id === itemId ? {...item, quantity} : item
+            item.id === itemId ? {...item, quantity: limitedQuantity} : item
           );
 
           return {

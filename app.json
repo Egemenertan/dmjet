@@ -21,7 +21,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.dmarjet",
       "buildNumber": "3",
       "requireFullScreen": false,

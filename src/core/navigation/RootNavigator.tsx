@@ -10,24 +10,27 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {RootStackParamList} from './types';
 import {AuthNavigator} from './AuthNavigator';
 import {MainNavigator} from './MainNavigator';
+import {TabProvider} from './TabContext';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{headerShown: false}}>
-        {/* Ana navigator her zaman gösteriliyor - login zorunlu değil */}
-        <Stack.Screen name="Main" component={MainNavigator} />
-        {/* Auth ekranları modal olarak gösteriliyor */}
-        <Stack.Screen 
-          name="Auth" 
-          component={AuthNavigator}
-          options={{
-            presentation: 'modal',
-          }}
-        />
-      </Stack.Navigator>
+      <TabProvider>
+        <Stack.Navigator screenOptions={{headerShown: false}}>
+          {/* Ana navigator her zaman gösteriliyor - login zorunlu değil */}
+          <Stack.Screen name="Main" component={MainNavigator} />
+          {/* Auth ekranları modal olarak gösteriliyor */}
+          <Stack.Screen 
+            name="Auth" 
+            component={AuthNavigator}
+            options={{
+              presentation: 'modal',
+            }}
+          />
+        </Stack.Navigator>
+      </TabProvider>
     </NavigationContainer>
   );
 };

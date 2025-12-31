@@ -30,6 +30,10 @@ export type MainStackParamList = {
   Cart: undefined;
   SearchResults: {query: string};
   Legal: undefined;
+  PersonalInfo: undefined;
+  AddressInfo: undefined;
+  Security: undefined;
+  NotificationPreferences: undefined;
 };
 
 // Bottom Tabs

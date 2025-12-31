@@ -235,6 +235,31 @@ class ProfileService {
       address,
     });
   }
+
+  /**
+   * Delete user account permanently
+   * This will:
+   * 1. Delete user profile from profiles table
+   * 2. Delete user from auth.users table
+   * 3. All related data will be cascade deleted (orders, notifications, etc.)
+   */
+  async deleteAccount(): Promise<void> {
+    try {
+      // Call the RPC function to delete the account
+      const { error } = await supabase.rpc('delete_user_account');
+
+      if (error) {
+        console.error('❌ Error deleting account:', error);
+        throw new Error('Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+
+      // Sign out the user
+      await supabase.auth.signOut();
+    } catch (error: any) {
+      console.error('❌ Account deletion failed:', error);
+      throw error;
+    }
+  }
 }
 
 export const profileService = new ProfileService();

@@ -49,156 +49,303 @@ export const LegalScreen: React.FC = () => {
     if (currentLanguage === 'en') {
       return `# Privacy Policy
 
-Last updated: December 23, 2025
+Last updated: December 31, 2025
+Version: 2.0.0
 
 At DMARJET, the security of your personal information is extremely important to us. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.
 
 ## 1. Information We Collect
 
-### Personal Information
+### 1.1 Personal Information
 • Full name
 • Email address
 • Phone number
 • Delivery address
 
-### Usage Data
-• IP address
-• Device information
-• Application usage statistics
-• Error reports
+### 1.2 Device and Technical Information
+• Device ID (Android ID or iOS fingerprint)
+• IP address (via ipify.org API)
+• Device model and OS version
+• User Agent (app version and device info)
+• Last login information (device, IP, timestamp)
 
-### Location Information
-We collect your location information with your permission to provide delivery services.
+### 1.3 Location Data
+• GPS coordinates (with your permission)
+• Delivery address details
+• Used for delivery area verification
+
+### 1.4 Usage Data
+• Order history
+• Shopping cart information
+• Search history
+• Application usage statistics
+• Error reports (via Sentry)
 
 ## 2. Use of Information
 
+### 2.1 Service Provision
 • Process and deliver your orders
 • Manage and secure your account
 • Provide customer support
+
+### 2.2 Security and Fraud Prevention
+• Multi-account detection (max 3 accounts per device)
+• Rate limiting (IP and Device ID based)
+• Device and IP banning (temporary or permanent)
+• Order validation and stock verification
+
+### 2.3 Improvement
 • Improve our services
+• Debug and troubleshoot
 • Fulfill legal obligations
 
-## 3. Data Security
+## 3. Data Retention
 
-To protect your personal information:
-• SSL encryption technology
-• Secure data storage
-• Regular security audits
-• Limited access controls
+• Active accounts: Until deletion
+• Order records: 10 years (legal requirement)
+• Security logs: 90 days
+• IP addresses: 90 days
+• Device ID: While account is active
+• Location data: Until deletion (can be deleted earlier)
+• Deleted accounts: 30 days (complete removal)
 
-## 4. Your Rights
+## 4. Data Sharing
 
-Under GDPR/Data Protection Laws:
-• Know if your data is being processed
-• Request correction
-• Request deletion
-• Object to processing
+Your data is NEVER shared for marketing purposes.
+
+Shared only with:
+• Delivery company (name, address, phone)
+• Payment provider (payment processing only)
+• Service providers: Supabase, ipify.org, Google Maps, Sentry
+• Legal authorities (when required by law)
+
+Note: All third-party services are GDPR compliant.
+
+## 5. Data Security
+
+• SSL/TLS encryption
+• Row Level Security (RLS)
+• Password hashing (bcrypt)
+• Rate limiting
+• Device banning system
+• Audit logging
+
+## 6. Your Rights (GDPR)
+
+• Right to access your data
+• Right to correction
+• Right to erasure
+• Right to object
+• Data portability
+
+To exercise your rights:
+Email: privacy@dmarjet.com
+App: Profile > Settings > Delete Account
 
 ## Contact
-Email: info@dmarjet.com
+Email: privacy@dmarjet.com
+Support: support@dmarjet.com
 Phone: +90 (533) 844 45 25`;
     } else if (currentLanguage === 'ru') {
       return `# Политика конфиденциальности
 
-Последнее обновление: 23 декабря 2025 г.
+Последнее обновление: 31 декабря 2025 г.
+Версия: 2.0.0
 
 В DMARJET безопасность вашей личной информации чрезвычайно важна для нас. Эта Политика конфиденциальности объясняет, как мы собираем, используем и защищаем вашу личную информацию при использовании наших услуг.
 
 ## 1. Информация, которую мы собираем
 
-### Личная информация
+### 1.1 Личная информация
 • Полное имя
 • Адрес электронной почты
 • Номер телефона
 • Адрес доставки
 
-### Данные об использовании
-• IP-адрес
-• Информация об устройстве
-• Статистика использования приложения
-• Отчеты об ошибках
+### 1.2 Информация об устройстве и технические данные
+• ID устройства (Android ID или отпечаток iOS)
+• IP-адрес (через API ipify.org)
+• Модель устройства и версия ОС
+• User Agent (версия приложения и информация об устройстве)
+• Информация о последнем входе (устройство, IP, время)
 
-### Информация о местоположении
-Мы собираем информацию о вашем местоположении с вашего разрешения для предоставления услуг доставки.
+### 1.3 Данные о местоположении
+• GPS-координаты (с вашего разрешения)
+• Детали адреса доставки
+• Используется для проверки зоны доставки
+
+### 1.4 Данные об использовании
+• История заказов
+• Информация о корзине
+• История поиска
+• Статистика использования приложения
+• Отчеты об ошибках (через Sentry)
 
 ## 2. Использование информации
 
-• Обработка и доставка ваших заказов
-• Управление и защита вашей учетной записи
-• Предоставление поддержки клиентов
-• Улучшение наших услуг
+### 2.1 Предоставление услуг
+• Обработка и доставка заказов
+• Управление и защита учетной записи
+• Поддержка клиентов
+
+### 2.2 Безопасность и предотвращение мошенничества
+• Обнаружение нескольких учетных записей (макс. 3 на устройство)
+• Ограничение частоты запросов (на основе IP и ID устройства)
+• Блокировка устройств и IP (временная или постоянная)
+• Проверка заказов и наличия товаров
+
+### 2.3 Улучшение
+• Улучшение услуг
+• Отладка и устранение неполадок
 • Выполнение юридических обязательств
 
-## 3. Безопасность данных
+## 3. Хранение данных
 
-Для защиты вашей личной информации:
-• Технология шифрования SSL
-• Безопасное хранение данных
-• Регулярные проверки безопасности
-• Ограниченный контроль доступа
+• Активные аккаунты: До удаления
+• Записи заказов: 10 лет (требование закона)
+• Журналы безопасности: 90 дней
+• IP-адреса: 90 дней
+• ID устройства: Пока аккаунт активен
+• Данные о местоположении: До удаления (можно удалить раньше)
+• Удаленные аккаунты: 30 дней (полное удаление)
 
-## 4. Ваши права
+## 4. Обмен данными
 
-В соответствии с законами о защите данных:
-• Узнать, обрабатываются ли ваши данные
-• Запросить исправление
-• Запросить удаление
-• Возразить против обработки
+Ваши данные НИКОГДА не передаются в маркетинговых целях.
+
+Передаются только:
+• Компании доставки (имя, адрес, телефон)
+• Платежному провайдеру (только для обработки платежей)
+• Поставщикам услуг: Supabase, ipify.org, Google Maps, Sentry
+• Органам власти (при требовании закона)
+
+Примечание: Все сторонние сервисы соответствуют GDPR.
+
+## 5. Безопасность данных
+
+• Шифрование SSL/TLS
+• Безопасность на уровне строк (RLS)
+• Хеширование паролей (bcrypt)
+• Ограничение частоты запросов
+• Система блокировки устройств
+• Журналирование аудита
+
+## 6. Ваши права (GDPR)
+
+• Право доступа к данным
+• Право на исправление
+• Право на удаление
+• Право на возражение
+• Переносимость данных
+
+Для реализации прав:
+Email: privacy@dmarjet.com
+Приложение: Профиль > Настройки > Удалить аккаунт
 
 ## Контакты
-Email: info@dmarjet.com
+Email: privacy@dmarjet.com
+Поддержка: support@dmarjet.com
 Телефон: +90 (533) 844 45 25`;
     } else {
       // Turkish (default)
       return `# Gizlilik Politikası
 
-Son güncelleme: 23.12.2025
+Son güncelleme: 31.12.2025
+Versiyon: 2.0.0
 
 DMARJET olarak, kişisel bilgilerinizin güvenliği bizim için son derece önemlidir. Bu Gizlilik Politikası, hizmetlerimizi kullanırken kişisel bilgilerinizi nasıl topladığımızı, kullandığımızı ve koruduğumuzu açıklamaktadır.
 
 ## 1. Topladığımız Bilgiler
 
-### Kişisel Bilgiler
+### 1.1 Kişisel Bilgiler
 • Ad ve soyad
 • E-posta adresi
 • Telefon numarası
 • Teslimat adresi
 
-### Kullanım Verileri
-• IP adresi
-• Cihaz bilgileri
-• Uygulama kullanım istatistikleri
-• Hata raporları
+### 1.2 Cihaz ve Teknik Bilgiler
+• Cihaz ID (Android ID veya iOS parmak izi)
+• IP adresi (ipify.org API üzerinden)
+• Cihaz modeli ve işletim sistemi versiyonu
+• Kullanıcı Ajanı (uygulama versiyonu ve cihaz bilgisi)
+• Son giriş bilgileri (cihaz, IP, zaman)
 
-### Konum Bilgileri
-Teslimat hizmeti sunabilmek için izninizle konum bilgilerinizi topluyoruz.
+### 1.3 Konum Verileri
+• GPS koordinatları (izninizle)
+• Teslimat adresi detayları
+• Teslimat alanı kontrolü için kullanılır
+
+### 1.4 Kullanım Verileri
+• Sipariş geçmişi
+• Sepet bilgileri
+• Arama geçmişi
+• Uygulama kullanım istatistikleri
+• Hata raporları (Sentry üzerinden)
 
 ## 2. Bilgilerin Kullanımı
 
+### 2.1 Hizmet Sağlama
 • Siparişlerinizi işleme almak ve teslimat yapmak
 • Hesabınızı yönetmek ve güvenliğini sağlamak
 • Müşteri desteği sağlamak
+
+### 2.2 Güvenlik ve Dolandırıcılık Önleme
+• Çoklu hesap tespiti (cihaz başına maks. 3 hesap)
+• Rate limiting (IP ve Cihaz ID bazlı)
+• Cihaz ve IP banlama (geçici veya kalıcı)
+• Sipariş doğrulama ve stok kontrolü
+
+### 2.3 İyileştirme
 • Hizmetlerimizi geliştirmek
+• Hata ayıklama ve sorun giderme
 • Yasal yükümlülükleri yerine getirmek
 
-## 3. Veri Güvenliği
+## 3. Veri Saklama Süresi
 
-Kişisel bilgilerinizi korumak için:
-• SSL şifreleme teknolojisi
-• Güvenli veri depolama
-• Düzenli güvenlik denetimleri
-• Sınırlı erişim kontrolleri
+• Aktif hesaplar: Silinene kadar
+• Sipariş kayıtları: 10 yıl (yasal zorunluluk)
+• Güvenlik logları: 90 gün
+• IP adresleri: 90 gün
+• Cihaz ID: Hesap aktif olduğu sürece
+• Konum verileri: Silinene kadar (daha önce silinebilir)
+• Silinen hesaplar: 30 gün (tamamen silinir)
 
-## 4. Haklarınız
+## 4. Veri Paylaşımı
 
-KVKK kapsamında:
-• Verilerinizin işlenip işlenmediğini öğrenme
-• Düzeltilmesini isteme
-• Silinmesini isteme
-• İşleme itiraz etme
+Verileriniz ASLA pazarlama amacıyla paylaşılmaz.
+
+Sadece şunlarla paylaşılır:
+• Teslimat şirketi (ad, adres, telefon)
+• Ödeme sağlayıcısı (sadece ödeme işlemi için)
+• Hizmet sağlayıcılar: Supabase, ipify.org, Google Maps, Sentry
+• Yasal makamlar (yasal zorunluluk durumunda)
+
+Not: Tüm üçüncü taraf servisler GDPR uyumludur.
+
+## 5. Veri Güvenliği
+
+• SSL/TLS şifreleme
+• Row Level Security (RLS)
+• Şifre hashleme (bcrypt)
+• Rate limiting
+• Cihaz banlama sistemi
+• Audit logging
+
+## 6. Haklarınız (KVKK & GDPR)
+
+• Verilerinize erişim hakkı
+• Düzeltme hakkı
+• Silme hakkı
+• İtiraz hakkı
+• Veri taşınabilirliği
+
+Haklarınızı kullanmak için:
+E-posta: privacy@dmarjet.com
+Uygulama: Profil > Ayarlar > Hesabı Sil
 
 ## İletişim
-E-posta: info@dmarjet.com
+E-posta: privacy@dmarjet.com
+Destek: support@dmarjet.com
 Telefon: +90 (533) 844 45 25`;
     }
   };
@@ -207,7 +354,8 @@ Telefon: +90 (533) 844 45 25`;
     if (currentLanguage === 'en') {
       return `# Terms of Service
 
-Last Update: December 23, 2025
+Last Update: December 31, 2025
+Version: 2.0.0
 
 ## 1. Service Description
 
@@ -218,6 +366,7 @@ DMARJET provides online grocery delivery service in the Trikomo (İskele) region
 • You must be at least 18 years old
 • You must provide accurate and current information
 • You must be within our service area
+• Maximum 3 accounts per device allowed
 
 ## 3. Orders and Payment
 
@@ -225,37 +374,73 @@ DMARJET provides online grocery delivery service in the Trikomo (İskele) region
 • Payment can be made by cash or credit card
 • Minimum order amount may apply
 • Prices may change without prior notice
+• Stock availability is verified at checkout
 
 ## 4. Delivery Policy
 
 • Delivery hours: 08:00 - 22:00
 • Estimated delivery time: 15-25 minutes
 • Delivery address must be within İskele/Trikomo region
+• GPS location required for delivery verification
 
 ## 5. Cancellation and Return Policy
 
 • Full refund for incorrect or damaged products
 • Return requests must be made within 24 hours after delivery
+• Orders cannot be cancelled after preparation begins
 
 ## 6. User Responsibilities
 
 • Ensure the security of your account information
 • Provide accurate and current information
 • Treat delivery personnel respectfully
+• Do not create multiple accounts for abuse
+• Do not place fraudulent orders
 
-## 7. Limitation of Liability
+## 7. Security and Account Suspension
+
+### Automatic Ban Conditions:
+• Creating more than 3 accounts from same device
+• Fraudulent order attempts
+• Abusive behavior towards staff
+• Violation of terms of service
+
+### Ban Types:
+• Temporary ban: 7-30 days
+• Permanent ban: For serious violations
+• Device ban: Prevents new account creation
+• IP ban: Blocks access from specific IP addresses
+
+### Appeal Process:
+Contact support@dmarjet.com to appeal a ban
+
+## 8. Data Collection and Privacy
+
+• We collect device ID, IP address, and location data
+• Data is used for security and fraud prevention
+• See Privacy Policy for full details
+• You can request data deletion at any time
+
+## 9. Limitation of Liability
 
 • We are not responsible for service interruptions or errors
 • Liability is limited to the order amount
 • No liability accepted in force majeure situations
+• Not responsible for third-party service failures
+
+## 10. Changes to Terms
+
+We reserve the right to modify these terms at any time. Users will be notified of significant changes via email.
 
 ## Contact
-Email: info@dmarjet.com
+Email: support@dmarjet.com
+Privacy: privacy@dmarjet.com
 Phone: +90 (533) 844 45 25`;
     } else if (currentLanguage === 'ru') {
       return `# Условия использования
 
-Последнее обновление: 23 декабря 2025 г.
+Последнее обновление: 31 декабря 2025 г.
+Версия: 2.0.0
 
 ## 1. Описание услуги
 
@@ -266,6 +451,7 @@ DMARJET предоставляет услуги онлайн-доставки п
 • Вам должно быть не менее 18 лет
 • Вы должны предоставить точную и актуальную информацию
 • Вы должны находиться в зоне нашего обслуживания
+• Разрешено максимум 3 учетные записи на устройство
 
 ## 3. Заказы и оплата
 
@@ -273,38 +459,74 @@ DMARJET предоставляет услуги онлайн-доставки п
 • Оплата может быть произведена наличными или кредитной картой
 • Может применяться минимальная сумма заказа
 • Цены могут измениться без предварительного уведомления
+• Наличие товара проверяется при оформлении заказа
 
 ## 4. Политика доставки
 
 • Часы доставки: 08:00 - 22:00
 • Ориентировочное время доставки: 15-25 минут
 • Адрес доставки должен находиться в регионе Искеле/Трикомо
+• Требуется GPS-местоположение для проверки доставки
 
 ## 5. Политика отмены и возврата
 
 • Полный возврат средств за неправильные или поврежденные товары
 • Запросы на возврат должны быть сделаны в течение 24 часов после доставки
+• Заказы нельзя отменить после начала подготовки
 
 ## 6. Обязанности пользователя
 
 • Обеспечить безопасность информации вашей учетной записи
 • Предоставлять точную и актуальную информацию
 • Уважительно относиться к персоналу доставки
+• Не создавать несколько учетных записей для злоупотреблений
+• Не размещать мошеннические заказы
 
-## 7. Ограничение ответственности
+## 7. Безопасность и приостановка учетной записи
+
+### Условия автоматической блокировки:
+• Создание более 3 учетных записей с одного устройства
+• Попытки мошеннических заказов
+• Оскорбительное поведение по отношению к персоналу
+• Нарушение условий использования
+
+### Типы блокировок:
+• Временная блокировка: 7-30 дней
+• Постоянная блокировка: За серьезные нарушения
+• Блокировка устройства: Предотвращает создание новых учетных записей
+• Блокировка IP: Блокирует доступ с определенных IP-адресов
+
+### Процесс обжалования:
+Свяжитесь с support@dmarjet.com для обжалования блокировки
+
+## 8. Сбор данных и конфиденциальность
+
+• Мы собираем ID устройства, IP-адрес и данные о местоположении
+• Данные используются для безопасности и предотвращения мошенничества
+• См. Политику конфиденциальности для полной информации
+• Вы можете запросить удаление данных в любое время
+
+## 9. Ограничение ответственности
 
 • Мы не несем ответственности за перебои в обслуживании или ошибки
 • Ответственность ограничена суммой заказа
 • Ответственность не принимается в случае форс-мажорных обстоятельств
+• Не несем ответственности за сбои сторонних сервисов
+
+## 10. Изменения условий
+
+Мы оставляем за собой право изменять эти условия в любое время. Пользователи будут уведомлены о значительных изменениях по электронной почте.
 
 ## Контакты
-Email: info@dmarjet.com
+Email: support@dmarjet.com
+Конфиденциальность: privacy@dmarjet.com
 Телефон: +90 (533) 844 45 25`;
     } else {
       // Turkish (default)
       return `# Kullanım Şartları
 
-Son Güncelleme: 23.12.2025
+Son Güncelleme: 31.12.2025
+Versiyon: 2.0.0
 
 ## 1. Hizmet Açıklaması
 
@@ -315,6 +537,7 @@ DMARJET, Kuzey Kıbrıs İskele (Trikomo) bölgesinde online market teslimat hiz
 • En az 18 yaşında olmalısınız
 • Doğru ve güncel bilgiler sağlamalısınız
 • Hizmet bölgemiz içinde bulunmalısınız
+• Cihaz başına maksimum 3 hesap açılabilir
 
 ## 3. Sipariş ve Ödeme
 
@@ -322,32 +545,67 @@ DMARJET, Kuzey Kıbrıs İskele (Trikomo) bölgesinde online market teslimat hiz
 • Nakit veya kredi kartı ile ödeme yapılabilir
 • Minimum sipariş tutarı uygulanabilir
 • Fiyatlar önceden haber verilmeksizin değiştirilebilir
+• Stok durumu ödeme sırasında kontrol edilir
 
 ## 4. Teslimat Politikası
 
 • Teslimat saatleri: 08:00 - 22:00 arası
 • Tahmini teslimat süresi: 15-25 dakika
 • Teslimat adresi İskele/Trikomo bölgesi içinde olmalıdır
+• Teslimat doğrulaması için GPS konumu gereklidir
 
 ## 5. İptal ve İade Politikası
 
 • Hatalı veya hasarlı ürünler için tam iade yapılır
 • İade talepleri teslimat sonrası 24 saat içinde yapılmalıdır
+• Hazırlık başladıktan sonra sipariş iptal edilemez
 
 ## 6. Kullanıcı Sorumlulukları
 
 • Hesap bilgilerinizin güvenliğini sağlamak
 • Doğru ve güncel bilgiler sağlamak
 • Teslimat personeline saygılı davranmak
+• Kötüye kullanım için birden fazla hesap açmamak
+• Sahte sipariş vermemek
 
-## 7. Sorumluluk Sınırlaması
+## 7. Güvenlik ve Hesap Askıya Alma
+
+### Otomatik Ban Koşulları:
+• Aynı cihazdan 3'ten fazla hesap oluşturma
+• Sahte sipariş denemeleri
+• Personele karşı kötü davranış
+• Kullanım şartlarını ihlal etme
+
+### Ban Türleri:
+• Geçici ban: 7-30 gün
+• Kalıcı ban: Ciddi ihlaller için
+• Cihaz banı: Yeni hesap açılmasını engeller
+• IP banı: Belirli IP adreslerinden erişimi engeller
+
+### İtiraz Süreci:
+Ban itirazı için support@dmarjet.com ile iletişime geçin
+
+## 8. Veri Toplama ve Gizlilik
+
+• Cihaz ID, IP adresi ve konum verisi topluyoruz
+• Veriler güvenlik ve dolandırıcılık önleme için kullanılır
+• Tam detaylar için Gizlilik Politikası'na bakın
+• İstediğiniz zaman veri silme talebinde bulunabilirsiniz
+
+## 9. Sorumluluk Sınırlaması
 
 • Hizmet kesintileri veya hatalardan sorumlu değiliz
 • Sorumluluk sipariş tutarı ile sınırlıdır
 • Mücbir sebep durumlarında sorumluluk kabul edilmez
+• Üçüncü taraf servis hatalarından sorumlu değiliz
+
+## 10. Şartlarda Değişiklikler
+
+Bu şartları istediğimiz zaman değiştirme hakkını saklı tutarız. Önemli değişiklikler e-posta ile bildirilecektir.
 
 ## İletişim
-E-posta: info@dmarjet.com
+E-posta: support@dmarjet.com
+Gizlilik: privacy@dmarjet.com
 Telefon: +90 (533) 844 45 25`;
     }
   };

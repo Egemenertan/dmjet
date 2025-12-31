@@ -15,4 +15,5 @@ export {WorkingHoursAlert} from './WorkingHoursAlert';
 export {WorkingHoursBanner} from './WorkingHoursBanner';
 export {SentryTestButton} from './SentryTestButton';
 export {AgeVerificationModal} from './AgeVerificationModal';
+export {CategoryFilterBar} from './CategoryFilterBar';
 

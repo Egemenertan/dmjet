@@ -152,3 +152,4 @@ supabase secrets set GOOGLE_MAPS_API_KEY=your_key --project-ref your-project-id
 
 
 
+

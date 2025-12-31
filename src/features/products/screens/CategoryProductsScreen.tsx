@@ -3,24 +3,21 @@
  * Kategori ve alt kategoriye göre ürünleri listeler
  */
 
-import React, {useState, useCallback, useRef} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  ScrollView,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, useNavigation, RouteProp} from '@react-navigation/native';
-import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
-import {ArrowLeft} from 'iconoir-react-native';
-import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
+import {useInfiniteQuery} from '@tanstack/react-query';
+import {colors, spacing, fontSize, fontWeight} from '@core/constants';
 import {productsService} from '../services/productsService';
-import {ProductCard, CategoryCard, SubcategoryChip} from '../components';
-import {ModernBottomBar, LogoLoader} from '@shared/components';
+import {ProductCard} from '../components';
+import {ModernBottomBar, LogoLoader, CategoryFilterBar} from '@shared/components';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {useTranslation} from '@localization';
@@ -49,22 +46,6 @@ export const CategoryProductsScreen: React.FC = () => {
   const [currentCategoryId, setCurrentCategoryId] = useState<string>(initialCategoryId);
   const [currentCategoryName, setCurrentCategoryName] = useState<string>(initialCategoryName);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
-  
-  // Scroll pozisyonlarını korumak için ref'ler
-  const categoryScrollRef = useRef<ScrollView>(null);
-  const subcategoryScrollRef = useRef<ScrollView>(null);
-
-  // Tüm kategorileri çek (yatay scroll için)
-  const {data: allCategories} = useQuery({
-    queryKey: ['categories', language],
-    queryFn: () => productsService.getCategories(language),
-  });
-
-  // Bu kategorinin alt kategorilerini çek - currentCategoryId kullan
-  const {data: subcategories, isLoading: subcategoriesLoading} = useQuery({
-    queryKey: ['subcategories', currentCategoryId, language],
-    queryFn: () => productsService.getSubcategoriesByCategory(currentCategoryId, language),
-  });
 
   // Ürünleri çek (kategori ve seçili alt kategoriye göre) - Infinity Scroll
   const {
@@ -108,14 +89,20 @@ export const CategoryProductsScreen: React.FC = () => {
     });
   };
 
-  const handleCategoryChange = (newCategoryId: string, newCategoryName: string) => {
+  const handleCategoryChange = (categoryId: string | null, categoryName: string) => {
+    // "Tümü" seçilirse ana sayfaya dön
+    if (categoryId === null) {
+      navigation.goBack();
+      return;
+    }
+    
     // Navigation replace yerine state güncelle - scroll pozisyonları korunur
-    setCurrentCategoryId(newCategoryId);
-    setCurrentCategoryName(newCategoryName);
+    setCurrentCategoryId(categoryId);
+    setCurrentCategoryName(categoryName);
     setSelectedSubcategoryId(null); // Yeni kategoriye geçerken alt kategori seçimini sıfırla
   };
 
-  const handleSubcategoryPress = (subcategoryId: string | null) => {
+  const handleSubcategoryChange = (subcategoryId: string | null, subcategoryName: string) => {
     setSelectedSubcategoryId(subcategoryId);
   };
 
@@ -154,79 +141,15 @@ export const CategoryProductsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Sticky Header - Kategori ve Alt Kategori Filtreleri - Sabit Pozisyon */}
-        <View style={styles.stickyHeader}>
-        {/* Kategoriler - Chip Tarzında */}
-        <View style={styles.categoriesSection}>
-          <ScrollView
-            ref={categoryScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}>
-            {/* Geri Butonu */}
-            <TouchableOpacity
-              style={styles.backButtonChip}
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}>
-              <ArrowLeft
-                width={20}
-                height={20}
-                color={colors.text.primary}
-                strokeWidth={2.5}
-              />
-            </TouchableOpacity>
-            
-            {allCategories?.map((category: any) => {
-              // Service katmanında çeviriler zaten uygulanmış
-              const catName = category.name; // Zaten çevrilmiş veya Türkçe fallback
-              const isActive = category.id === currentCategoryId;
-
-              return (
-                <SubcategoryChip
-                  key={category.id}
-                  id={category.id}
-                  name={catName}
-                  isActive={isActive}
-                  onPress={() => handleCategoryChange(category.id, catName)}
-                />
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Alt Kategoriler - Yatay Scroll */}
-        {subcategories && subcategories.length > 0 && (
-          <View style={styles.subcategoriesSection}>
-            <ScrollView
-              ref={subcategoryScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.subcategoriesScroll}>
-              {/* Tümü Butonu */}
-              <SubcategoryChip
-                id="all"
-                name={t('common.all')}
-                isActive={selectedSubcategoryId === null}
-                onPress={() => handleSubcategoryPress(null)}
-              />
-              {subcategories.map((subcategory: any) => {
-                // Service katmanında çeviriler zaten uygulanmış
-                const subName = subcategory.name; // Zaten çevrilmiş veya Türkçe fallback
-
-                return (
-                  <SubcategoryChip
-                    key={subcategory.id}
-                    id={subcategory.id}
-                    name={subName}
-                    isActive={selectedSubcategoryId === subcategory.id}
-                    onPress={() => handleSubcategoryPress(subcategory.id)}
-                  />
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-      </View>
+        {/* Category Filter Bar with Back Button */}
+        <CategoryFilterBar
+          onCategoryChange={handleCategoryChange}
+          onSubcategoryChange={handleSubcategoryChange}
+          selectedCategoryId={currentCategoryId}
+          selectedSubcategoryId={selectedSubcategoryId}
+          showBackButton={true}
+          onBackPress={() => navigation.goBack()}
+        />
 
       {/* Ürünler Listesi - Sadece Bu Alan Yenilenir */}
       <View style={styles.productsContainer}>
@@ -303,39 +226,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  stickyHeader: {
-    backgroundColor: colors.background,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    // Sabit pozisyon - scroll ile hareket etmez
-    zIndex: 10,
-  },
-  categoriesSection: {
-    marginBottom: spacing.sm,
-  },
-  categoriesScroll: {
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  backButtonChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  subcategoriesSection: {
-    paddingBottom: spacing.sm,
-  },
-  subcategoriesScroll: {
-    paddingHorizontal: spacing.lg,
   },
   productsContainer: {
     flex: 1,

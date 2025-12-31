@@ -10,22 +10,19 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, useNavigation, RouteProp} from '@react-navigation/native';
 import {useInfiniteQuery} from '@tanstack/react-query';
-import {ArrowLeft, Search} from 'iconoir-react-native';
+import {Search} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {searchService} from '../services/searchService';
-import {CategoryFilter} from '../components';
 import {ProductCard} from '@features/products/components';
 import {productsService} from '@features/products/services/productsService';
 import {useCartStore} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
-import {LogoLoader} from '@shared/components';
+import {LogoLoader, ModernBottomBar, CategoryFilterBar} from '@shared/components';
 import {useTranslation} from '@localization';
-import {ModernBottomBar} from '@shared/components';
 import {useTabNavigation} from '@core/navigation/TabContext';
 
 type RouteParams = {
@@ -199,27 +196,14 @@ export const SearchResultsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header with Back Button */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}>
-            <ArrowLeft
-              width={24}
-              height={24}
-              color={colors.text.primary}
-              strokeWidth={2}
-            />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('search.searchResults')}</Text>
-        </View>
-
-        {/* Category Filter */}
-        <CategoryFilter
+        {/* Category Filter Bar with Back Button */}
+        <CategoryFilterBar
           onCategoryChange={handleCategoryChange}
           onSubcategoryChange={handleSubcategoryChange}
           selectedCategoryId={selectedCategoryId}
           selectedSubcategoryId={selectedSubcategoryId}
+          showBackButton={true}
+          onBackPress={() => navigation.goBack()}
         />
 
         {/* Ürünler Listesi */}
@@ -332,23 +316,6 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background,
-    gap: spacing.md,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
   },
   productsContainer: {
     flex: 1,

@@ -5,5 +5,6 @@
 
 export {OrdersScreen} from './OrdersScreen';
 export {AdminOrdersScreen} from './AdminOrdersScreen';
+export {OrderDetailScreen} from './OrderDetailScreen';
 
 

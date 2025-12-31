@@ -10,7 +10,7 @@ import {useNavigation} from '@react-navigation/native';
 import {Ionicons} from '@expo/vector-icons';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {Button} from '@shared/ui';
-import {useCartStore} from '@store/slices/cartStore';
+import {useCartStore, MAX_QUANTITY_PER_PRODUCT} from '@store/slices/cartStore';
 import {useTranslation} from '@localization';
 import {useTabNavigation} from '@core/navigation/TabContext';
 import {useWorkingHoursContext} from '@core/contexts/WorkingHoursContext';
@@ -342,7 +342,17 @@ export const CartScreen: React.FC = () => {
                 
                 <TouchableOpacity
                   style={styles.incrementButton}
-                  onPress={() => updateQuantity(item.id, item.quantity + 1)}
+                  onPress={() => {
+                    if (item.quantity >= MAX_QUANTITY_PER_PRODUCT) {
+                      Alert.alert(
+                        t('cart.maxQuantityTitle'),
+                        t('cart.maxQuantityMessage', {max: MAX_QUANTITY_PER_PRODUCT.toString()}),
+                        [{text: t('common.ok')}]
+                      );
+                      return;
+                    }
+                    updateQuantity(item.id, item.quantity + 1);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.quantityButtonText}>+</Text>

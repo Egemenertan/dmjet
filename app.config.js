@@ -41,6 +41,7 @@ const envStatus = {
   GOOGLE_MAPS_API_KEY_ANDROID: getEnvVar('GOOGLE_MAPS_API_KEY_ANDROID') ? '✅ Set' : '❌ Missing',
   GOOGLE_MAPS_API_KEY_IOS: getEnvVar('GOOGLE_MAPS_API_KEY_IOS') ? '✅ Set' : '❌ Missing',
   SENTRY_DSN: getEnvVar('SENTRY_DSN') ? '✅ Set' : '❌ Missing',
+  CLARITY_PROJECT_ID: getEnvVar('CLARITY_PROJECT_ID') ? '✅ Set' : '❌ Missing',
 };
 
 console.log('🔧 Building with environment variables:', envStatus);
@@ -118,7 +119,7 @@ export default {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      supportsTablet: false,
+      supportsTablet: true,
       bundleIdentifier: 'com.dmarjet',
       buildNumber: '3',
       subtitle: 'Hızlı Market Teslimatı',
@@ -183,6 +184,7 @@ export default {
       supabaseAnonKey: hasValidSupabaseKey ? supabaseAnonKey.trim() : '',
       googleMapsApiKey: getEnvVar('GOOGLE_MAPS_API_KEY_IOS') || getEnvVar('GOOGLE_MAPS_API_KEY'),
       sentryDsn: getEnvVar('SENTRY_DSN'),
+      clarityProjectId: getEnvVar('CLARITY_PROJECT_ID', 'utx6o5wd7r'),
     },
     plugins: [
       'expo-asset',

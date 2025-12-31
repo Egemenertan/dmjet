@@ -52,7 +52,14 @@ class NotificationProcessor {
       });
 
       if (error) {
-        console.error('❌ Edge function hatası:', error.message);
+        // Edge function yoksa veya çalışmıyorsa sessizce başarısız ol
+        // Bu kritik bir hata değil, bildirimler opsiyonel
+        if (error.message?.includes('Failed to send a request')) {
+          // Sessizce logla, kullanıcıyı rahatsız etme
+          console.log('ℹ️ Push notification edge function not available (optional feature)');
+        } else {
+          console.error('❌ Edge function hatası:', error.message);
+        }
         return { success: false, error: error.message };
       }
 
@@ -65,7 +72,12 @@ class NotificationProcessor {
 
       return result;
     } catch (error: any) {
-      console.error('❌ Bildirim işleme hatası:', error.message);
+      // Bildirim sistemi opsiyonel, kritik hata değil
+      if (error.message?.includes('Failed to send a request')) {
+        console.log('ℹ️ Push notification system not configured (optional)');
+      } else {
+        console.error('❌ Bildirim işleme hatası:', error.message);
+      }
       return { success: false, error: error.message };
     } finally {
       this.isProcessing = false;

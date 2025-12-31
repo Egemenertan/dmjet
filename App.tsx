@@ -19,6 +19,7 @@ import {ErrorBoundary} from '@shared/components/ErrorBoundary';
 import {AgeVerificationModal} from '@shared/components';
 import {colors} from '@core/constants';
 import {setUser, clearUser} from '@core/services/sentry';
+import {clarityService} from '@core/services/clarity';
 import {auth} from '@core/utils';
 import i18n from './src/localization/i18n';
 import * as Sentry from '@sentry/react-native';
@@ -86,6 +87,11 @@ if (sentryDsn) {
 } else {
   console.log('ℹ️ Sentry is disabled - no DSN provided');
 }
+
+// Initialize Microsoft Clarity for user behavior analytics
+clarityService.initialize().catch(error => {
+  console.error('❌ Clarity initialization failed:', error);
+});
 
 // Create a client with enhanced error handling
 const queryClient = new QueryClient({
@@ -171,6 +177,13 @@ function App(): React.JSX.Element {
             id: userId,
             email: profile.email || undefined,
             fullName: profile.full_name || undefined,
+          });
+
+          // Set user context in Clarity
+          clarityService.setUser(userId, {
+            email: profile.email || 'unknown',
+            fullName: profile.full_name || 'unknown',
+            role: profile.role || 'customer',
           });
         } else {
           setProfile(null);
@@ -266,6 +279,34 @@ function App(): React.JSX.Element {
         if (event === 'SIGNED_IN' && session?.user) {
           profileRetryCount = 0; // Reset retry count for new sign in
 
+          // Update device info for tracking (OAuth + Email/Password)
+          (async () => {
+            try {
+              const {getDeviceInfo} = await import('@core/utils/deviceInfo');
+              const deviceInfo = await getDeviceInfo();
+
+              // Get current profile to preserve device_id
+              const {data: profile} = await supabase
+                .from('profiles')
+                .select('device_id')
+                .eq('id', session.user.id)
+                .single();
+
+              // Update profile with device info
+              await supabase
+                .from('profiles')
+                .update({
+                  device_id: profile?.device_id || deviceInfo.deviceId,
+                  last_login_device: deviceInfo.deviceId,
+                  last_login_ip: deviceInfo.ip,
+                  last_login_at: new Date().toISOString(),
+                })
+                .eq('id', session.user.id);
+            } catch (error) {
+              console.error('Device tracking error:', error);
+            }
+          })();
+
           // Add delay for Google OAuth to ensure session is fully established
           // Increased delay to allow RLS policies to recognize auth.uid()
           setTimeout(async () => {
@@ -277,6 +318,7 @@ function App(): React.JSX.Element {
           if (mounted) {
             setProfile(null);
             clearUser();
+            clarityService.clearUser();
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           // Don't refetch profile on token refresh unless it's missing
@@ -303,6 +345,7 @@ function App(): React.JSX.Element {
           if (mounted) {
             setProfile(null);
             clearUser();
+            clarityService.clearUser();
           }
         }
       });

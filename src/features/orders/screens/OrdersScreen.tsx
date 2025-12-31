@@ -14,10 +14,14 @@ import {
   RefreshControl,
   Platform,
   Image,
+  Modal,
+  TextInput,
+  Alert,
+  Animated,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
-import {Package, NavArrowLeft, Pin, CreditCard, Cash} from 'iconoir-react-native';
+import {Package, NavArrowLeft, Pin, CreditCard, Cash, Xmark, NavArrowDown} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {useAuthStore} from '@store/slices/authStore';
 import {useTranslation} from '@localization';
@@ -114,6 +118,69 @@ const ProductItem = React.memo<{item: OrderItem; index: number}>(({item, index})
   );
 });
 
+// Expandable Cancel Button Component
+const ExpandableCancelButton = React.memo<{
+  isExpanded: boolean;
+  onPress: () => void;
+  label: string;
+}>(({isExpanded, onPress, label}) => {
+  const animatedHeight = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animatedHeight, {
+      toValue: isExpanded ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false, // Height animasyonu için false olmalı
+    }).start();
+  }, [isExpanded, animatedHeight]);
+
+  const heightInterpolate = animatedHeight.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 56],
+  });
+
+  const opacityInterpolate = animatedHeight.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  // Don't render if not expanded and animation is complete
+  const [shouldRender, setShouldRender] = React.useState(isExpanded);
+  
+  React.useEffect(() => {
+    if (isExpanded) {
+      setShouldRender(true);
+    } else {
+      const timer = setTimeout(() => setShouldRender(false), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded]);
+
+  if (!shouldRender) {
+    return null;
+  }
+
+  return (
+    <Animated.View
+      style={[
+        styles.cancelButtonContainer,
+        {
+          height: heightInterpolate,
+          opacity: opacityInterpolate,
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.cancelButtonText}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
 const ORDERS_PER_PAGE = 7;
 
 export const OrdersScreen: React.FC = () => {
@@ -128,6 +195,16 @@ export const OrdersScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  
+  // Cancel order modal states
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  
+  // Expanded order states (for showing cancel button)
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   
   // Memoize status config
   const statusConfig = useMemo(() => getStatusConfig(t), [t]);
@@ -238,6 +315,75 @@ export const OrdersScreen: React.FC = () => {
     }
   }, [t]);
 
+  // Handle cancel order
+  const handleCancelOrder = useCallback(async () => {
+    if (!selectedOrderId) return;
+
+    setCancelling(true);
+    try {
+      const {data, error} = await supabase.rpc('cancel_order_user', {
+        p_order_id: selectedOrderId,
+        p_cancel_reason: cancelReason.trim() || null,
+      });
+
+      if (error) throw error;
+
+      // Update local state
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === selectedOrderId
+            ? {...order, status: 'cancelled'}
+            : order
+        )
+      );
+
+      // Close modal and reset
+      setCancelModalVisible(false);
+      setSelectedOrderId(null);
+      setSelectedOrder(null);
+      setCancelReason('');
+
+      // Show success message
+      Alert.alert(
+        t('orders.orderCancelled'),
+        t('orders.orderCancelledMessage')
+      );
+    } catch (error: any) {
+      console.error('Cancel order error:', error);
+      Alert.alert(
+        t('orders.cancelError'),
+        error.message || t('orders.cancelErrorMessage')
+      );
+    } finally {
+      setCancelling(false);
+    }
+  }, [selectedOrderId, cancelReason, t]);
+
+  // Toggle expanded order
+  const toggleExpandOrder = useCallback((orderId: string) => {
+    setExpandedOrderId(prev => prev === orderId ? null : orderId);
+  }, []);
+
+  // Open cancel modal
+  const openCancelModal = useCallback((orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    setSelectedOrderId(orderId);
+    setSelectedOrder(order || null);
+    setCancelReason('');
+    setCancelModalVisible(true);
+    setExpandedOrderId(null); // Close expanded state when opening modal
+  }, [orders]);
+
+  // Close cancel modal
+  const closeCancelModal = useCallback(() => {
+    if (!cancelling) {
+      setCancelModalVisible(false);
+      setSelectedOrderId(null);
+      setSelectedOrder(null);
+      setCancelReason('');
+    }
+  }, [cancelling]);
+
   // Render order card
   const renderOrderCard = useCallback(({item: order}: {item: Order}) => {
     const statusInfo = statusConfig[order.status as keyof typeof statusConfig] || {
@@ -246,21 +392,67 @@ export const OrdersScreen: React.FC = () => {
       bgColor: colors.background,
     };
 
+    // Check if order can be cancelled
+    const canCancel = order.status === 'preparing' || order.status === 'prepared';
+    const isExpanded = expandedOrderId === order.id;
+
     return (
-      <View style={styles.orderCard}>
-        {/* Status Badge - Arka plan rengi ile */}
-        <View
+      <TouchableOpacity
+        style={styles.orderCard}
+        activeOpacity={0.7}
+        onPress={() => {
+          // @ts-ignore
+          navigation.navigate('OrderDetail', {orderId: order.id});
+        }}
+      >
+        {/* Status Badge - Tıklanabilir (sadece iptal edilebilir siparişler için) */}
+        <TouchableOpacity
           style={[
             styles.statusBadge,
             {backgroundColor: statusInfo.bgColor},
+            canCancel && styles.statusBadgeClickable,
           ]}
+          onPress={(e) => {
+            if (canCancel) {
+              e.stopPropagation();
+              toggleExpandOrder(order.id);
+            }
+          }}
+          disabled={!canCancel}
+          activeOpacity={canCancel ? 0.7 : 1}
         >
           <Text
             style={[styles.statusText, {color: statusInfo.color}]}
           >
             {statusInfo.label}
           </Text>
-        </View>
+          {canCancel && (
+            <View
+              style={{
+                transform: [{
+                  rotate: isExpanded ? '180deg' : '0deg'
+                }],
+              }}
+            >
+              <NavArrowDown
+                width={18}
+                height={18}
+                color={statusInfo.color}
+                strokeWidth={2.5}
+                style={styles.statusChevron}
+              />
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Cancel Button - Hemen status altında */}
+        {canCancel && (
+          <ExpandableCancelButton
+            isExpanded={isExpanded}
+            onPress={() => openCancelModal(order.id)}
+            label={t('orders.cancelOrder')}
+          />
+        )}
 
         {/* Order Info */}
         <View style={styles.orderInfo}>
@@ -331,9 +523,9 @@ export const OrdersScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, [statusConfig, formatDate, t]);
+  }, [statusConfig, formatDate, t, openCancelModal, expandedOrderId, toggleExpandOrder, navigation]);
 
   // Footer component for loading more
   const renderFooter = useCallback(() => {
@@ -433,6 +625,100 @@ export const OrdersScreen: React.FC = () => {
           ListEmptyComponent={renderEmpty}
         />
       )}
+
+      {/* Cancel Order Modal */}
+      <Modal
+        visible={cancelModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCancelModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {t('orders.cancelOrderTitle')}
+              </Text>
+              <TouchableOpacity
+                onPress={closeCancelModal}
+                disabled={cancelling}
+                style={styles.modalCloseButton}
+              >
+                <Xmark
+                  width={24}
+                  height={24}
+                  color={colors.text.secondary}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Body */}
+            <View style={styles.modalBody}>
+              {/* Order Info */}
+              {selectedOrder && (
+                <View style={styles.modalOrderInfo}>
+                  <Text style={styles.modalOrderNumber}>
+                    {t('orders.orderPrefix')}{selectedOrder.id.slice(0, 8).toUpperCase()}
+                  </Text>
+                  <Text style={styles.modalOrderAmount}>
+                    ₺{selectedOrder.total_amount.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+              
+              <Text style={styles.modalMessage}>
+                {t('orders.cancelOrderMessage')}
+              </Text>
+
+              {/* Cancel Reason Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  {t('orders.cancelReason')}
+                </Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder={t('orders.cancelReasonPlaceholder')}
+                  placeholderTextColor={colors.text.tertiary}
+                  value={cancelReason}
+                  onChangeText={setCancelReason}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  editable={!cancelling}
+                />
+              </View>
+            </View>
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={closeCancelModal}
+                disabled={cancelling}
+              >
+                <Text style={styles.modalCancelButtonText}>
+                  {t('common.no')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleCancelOrder}
+                disabled={cancelling}
+              >
+                {cancelling ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmButtonText}>
+                    {t('orders.confirmCancel')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -530,16 +816,24 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  statusBadgeClickable: {
+    paddingRight: spacing.md,
+  },
   statusText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
     letterSpacing: 0.8,
+    flex: 1,
+  },
+  statusChevron: {
+    marginLeft: spacing.xs,
+    opacity: 0.8,
   },
   orderInfo: {
     padding: spacing.lg,
@@ -667,5 +961,152 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: colors.primary,
+  },
+  cancelButtonContainer: {
+    overflow: 'hidden',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    backgroundColor: colors.error + '10',
+    borderRadius: borderRadius.md,
+  },
+  cancelButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.error,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
+    width: '100%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  modalBody: {
+    padding: spacing.lg,
+  },
+  modalOrderInfo: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalOrderNumber: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+  },
+  modalOrderAmount: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.primary,
+  },
+  modalMessage: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  inputContainer: {
+    marginBottom: spacing.sm,
+  },
+  inputLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  textArea: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.text.primary,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  modalCancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalCancelButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  modalConfirmButton: {
+    backgroundColor: colors.error,
+  },
+  modalConfirmButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: '#fff',
   },
 });

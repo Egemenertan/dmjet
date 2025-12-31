@@ -3,7 +3,7 @@
  */
 
 export * from './SearchBar';
-export * from './CategoryFilter';
+
 
 
 

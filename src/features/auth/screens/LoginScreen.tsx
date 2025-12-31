@@ -20,7 +20,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
-import {NavArrowLeft} from 'iconoir-react-native';
+import {NavArrowLeft, Eye, EyeClosed} from 'iconoir-react-native';
 import {Button, Input} from '@shared/ui';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {authService} from '../services/authService';
@@ -39,6 +39,7 @@ export const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   // Login öncesi hangi sayfadan gelindiyse oraya dönmek için
   const returnTo = route.params?.returnTo;
@@ -168,6 +169,23 @@ export const LoginScreen: React.FC = () => {
         />
         <Text style={styles.title}>{t('auth.login')}</Text>
         
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={handleGoogleLogin}
+          disabled={googleLoading}
+        >
+          <GoogleIcon size={20} />
+          <Text style={styles.googleButtonText}>
+            {googleLoading ? t('common.loading') : t('auth.loginWithGoogle')}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
+          <View style={styles.divider} />
+        </View>
+        
         <Input
           label={t('auth.email')}
           value={email}
@@ -181,8 +199,16 @@ export const LoginScreen: React.FC = () => {
           label={t('auth.password')}
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
+          secureTextEntry={!showPassword}
           placeholder="••••••••"
+          rightIcon={
+            showPassword ? (
+              <Eye width={20} height={20} color={colors.text.secondary} strokeWidth={2} />
+            ) : (
+              <EyeClosed width={20} height={20} color={colors.text.secondary} strokeWidth={2} />
+            )
+          }
+          onRightIconPress={() => setShowPassword(!showPassword)}
         />
 
         <TouchableOpacity
@@ -201,23 +227,6 @@ export const LoginScreen: React.FC = () => {
           fullWidth
           style={styles.loginButton}
         />
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
-          <View style={styles.divider} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.googleButton}
-          onPress={handleGoogleLogin}
-          disabled={googleLoading}
-        >
-          <GoogleIcon size={20} />
-          <Text style={styles.googleButtonText}>
-            {googleLoading ? t('common.loading') : t('auth.loginWithGoogle')}
-          </Text>
-        </TouchableOpacity>
 
         <Button
           title={t('auth.dontHaveAccount')}
@@ -260,20 +269,21 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
+    paddingTop: spacing.md,
     justifyContent: 'center',
     minHeight: '100%',
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 100,
+    height: 100,
     alignSelf: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: fontSize.xxxl,
+    fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     textAlign: 'center',
   },
   loginButton: {
@@ -284,7 +294,7 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
   },
   divider: {
     flex: 1,
@@ -305,7 +315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     gap: spacing.sm,
   },

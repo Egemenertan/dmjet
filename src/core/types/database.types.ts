@@ -402,11 +402,14 @@ export type Database = {
           coupon_code: string | null
           coupon_discount: number | null
           created_at: string | null
+          delivery_fee_applied: number | null
           delivery_fee_free: boolean | null
           delivery_note: string | null
+          delivery_setting_id: string | null
           expense_amount: number | null
           id: string
           items: Json
+          items_detail: Json | null
           original_amount: number | null
           payment_method: string
           shipping_address: Json
@@ -420,11 +423,14 @@ export type Database = {
           coupon_code?: string | null
           coupon_discount?: number | null
           created_at?: string | null
+          delivery_fee_applied?: number | null
           delivery_fee_free?: boolean | null
           delivery_note?: string | null
+          delivery_setting_id?: string | null
           expense_amount?: number | null
           id?: string
           items: Json
+          items_detail?: Json | null
           original_amount?: number | null
           payment_method: string
           shipping_address: Json
@@ -438,11 +444,14 @@ export type Database = {
           coupon_code?: string | null
           coupon_discount?: number | null
           created_at?: string | null
+          delivery_fee_applied?: number | null
           delivery_fee_free?: boolean | null
           delivery_note?: string | null
+          delivery_setting_id?: string | null
           expense_amount?: number | null
           id?: string
           items?: Json
+          items_detail?: Json | null
           original_amount?: number | null
           payment_method?: string
           shipping_address?: Json
@@ -1469,6 +1478,35 @@ export type Database = {
       mark_notification_read: {
         Args: { notification_id: string }
         Returns: boolean
+      }
+      create_order_secure: {
+        Args: {
+          p_items: Json
+          p_payment_method: string
+          p_shipping_address: Json
+          p_delivery_note?: string
+          p_coupon_code?: string
+        }
+        Returns: Json
+      }
+      preview_order_pricing: {
+        Args: {
+          p_items: Json
+          p_user_location?: Json
+          p_coupon_code?: string
+        }
+        Returns: Json
+      }
+      calculate_delivery_fee_backend: {
+        Args: {
+          p_items: Json
+          p_user_location: Json
+        }
+        Returns: number
+      }
+      check_minimum_order_backend: {
+        Args: { p_items: Json }
+        Returns: Json
       }
       translate_to_english: { Args: { turkish_name: string }; Returns: string }
       translate_to_russian: { Args: { turkish_name: string }; Returns: string }

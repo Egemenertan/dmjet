@@ -49,6 +49,8 @@ import {
 } from '../services/deliveryService';
 import {DeliverySettings} from '../types';
 import {isInDeliveryArea} from '@core/utils/polygon';
+import {getDeviceInfo} from '@core/utils/deviceInfo';
+import {secureOrderService, SecureOrderItem} from '@features/orders/services/secureOrderService';
 
 interface UserLocation {
   latitude: number;
@@ -274,105 +276,163 @@ export const CheckoutScreen: React.FC = () => {
     }
 
     setIsPlacingOrder(true);
+    
     try {
-      // Stok kontrolü yap
-      const stockCheck = await checkStockAvailability();
+      // ========================================================================
+      // İLK SİPARİŞ LİMİT KONTROLÜ (Client-side pre-check)
+      // ========================================================================
+      const firstOrderCheck = await secureOrderService.checkFirstOrderLimit(finalTotal);
       
-      if (!stockCheck.available) {
+      if (firstOrderCheck.is_first_order && firstOrderCheck.limit_exceeded) {
         setIsPlacingOrder(false);
-        
-        // Stokta olmayan veya yetersiz olan ürünleri göster
-        const stockMessages = stockCheck.outOfStockItems.map(item => {
-          if (item.type === 'out') {
-            return t('checkout.outOfStockItem', {productName: item.name});
-          } else {
-            return t('checkout.insufficientStockItem', {
-              productName: item.name,
-              available: item.available,
-              requested: item.requested,
-            });
-          }
-        }).join('\n');
-        
         Alert.alert(
-          t('checkout.outOfStockTitle'),
-          `${t('checkout.outOfStockMessage')}\n\n${stockMessages}`,
+          t('checkout.firstOrderLimitTitle'),
+          t('checkout.firstOrderLimitMessage', {
+            maxAmount: firstOrderCheck.max_amount.toFixed(2),
+            currentAmount: firstOrderCheck.current_amount.toFixed(2),
+            exceededBy: firstOrderCheck.exceeded_by?.toFixed(2) || '0.00',
+          }),
           [{text: t('common.ok')}]
         );
         return;
       }
-      // Sipariş verilerini hazırla
-      const orderItems = items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image_url: item.image_url,
-        barcode: item.barcode || null,
-      }));
+    } catch (error) {
+      console.error('First order limit check error:', error);
+      // Hata durumunda devam et, server-side kontrolü yapacak
+    }
 
-      // Stocks tablosundan sell_price'ları çek ve detaylı ürün bilgilerini hazırla
-      const stockIds = items.map(item => parseInt(item.id));
-      const {data: stockData, error: stockError} = await supabase
-        .from('stocks')
-        .select('stock_id, sell_price')
-        .in('stock_id', stockIds);
+    try {
+      // DEVICE BAN CHECK: Check if device, IP, email, or phone is banned
+      const deviceInfo = await getDeviceInfo();
+      const {data: banCheck, error: banError} = await supabase
+        .rpc('is_device_banned', {
+          p_device_id: deviceInfo.deviceId,
+          p_ip_address: deviceInfo.ip || '0.0.0.0',
+          p_email: user?.email || null,
+          p_phone: userLocation?.phone || null
+        });
 
-      if (stockError) {
-        console.error('Stock fiyat bilgisi alınamadı:', stockError);
-        throw stockError;
+      if (!banError && banCheck?.[0]?.is_banned) {
+        setIsPlacingOrder(false);
+        const ban = banCheck[0];
+        const expiryText = ban.expires_at 
+          ? `\n\n${t('checkout.banExpires', 'Ban süresi')}: ${new Date(ban.expires_at).toLocaleDateString()}`
+          : '';
+        
+        Alert.alert(
+          t('checkout.deviceBannedTitle', 'Cihaz Engellenmiş'),
+          `${t('checkout.deviceBannedMessage', 'Bu cihaz güvenlik ihlali nedeniyle engellenmiştir.')}\n\n${t('checkout.banReason', 'Sebep')}: ${ban.ban_reason}${expiryText}`,
+          [{text: t('common.ok')}]
+        );
+        return;
       }
 
-      // Kar marjını al
-      const profitMargin = deliverySettings?.profit_margin || 10;
+      // RATE LIMITING: Check if user has exceeded order attempt limit
+      const {data: rateLimitCheck, error: rateLimitError} = await supabase
+        .rpc('check_order_rate_limit', {
+          p_user_id: user?.id,
+          p_user_email: user?.email,
+          p_ip_address: deviceInfo.ip || '0.0.0.0',
+          p_user_agent: deviceInfo.userAgent,
+          p_device_id: deviceInfo.deviceId,
+          p_phone: userLocation?.phone || null
+        });
 
-      // Her ürün için detaylı bilgi oluştur
-      const itemsDetail = items.map(item => {
-        const stockItem = stockData?.find(s => s.stock_id === parseInt(item.id));
-        const sellPrice = stockItem?.sell_price || 0;
-        const finalPrice = item.price; // Sepetteki fiyat zaten kar marjı eklenmiş
+      if (rateLimitError) {
+        console.error('Rate limit check error:', rateLimitError);
+        // Continue anyway - don't block on rate limit check failure
+      }
 
-        return {
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          sell_price: sellPrice, // Stok satış fiyatı
-          final_price: finalPrice, // Müşteriye gösterilen fiyat (kar marjı eklenmiş)
-          profit_margin: profitMargin, // Uygulanan kar marjı
-          profit_amount: finalPrice - sellPrice, // Kar miktarı
-          image_url: item.image_url,
-          barcode: item.barcode || null,
-        };
-      });
+      const rateLimit = rateLimitCheck?.[0];
+      if (rateLimit && !rateLimit.allowed) {
+        setIsPlacingOrder(false);
+        Alert.alert(
+          t('checkout.rateLimitTitle', 'Çok Fazla Deneme'),
+          rateLimit.reason || t('checkout.rateLimitMessage', 'Çok fazla sipariş denemesi yaptınız. Lütfen birkaç dakika sonra tekrar deneyin.'),
+          [{text: t('common.ok')}]
+        );
+        return;
+      }
 
+      // ========================================================================
+      // 🔒 GÜVENLİ SİPARİŞ SİSTEMİ
+      // Frontend sadece product_id + quantity gönderir
+      // Tüm fiyat hesaplamaları backend'de yapılır
+      // ========================================================================
+      
+      // Güvenli sipariş item'larını hazırla (SADECE product_id + quantity)
+      const secureOrderItems: SecureOrderItem[] = items.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+      }));
+
+      // Shipping address'i hazırla
       const shippingAddress = {
         address: userLocation.address,
         addressDetails: userLocation.addressDetails,
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
-        phone: userLocation.phone ? `${userLocation.countryCode} ${userLocation.phone}` : undefined,
+        phone: userLocation.phone,
+        countryCode: userLocation.countryCode,
         full_name: 'Teslimat Adresi',
       };
 
-      // Sipariş oluştur
-      const {data: order, error: orderError} = await supabase
-        .from('orders')
-        .insert({
-          user_id: user?.id,
-          user_email: user?.email || '',
-          total_amount: finalTotal,
-          original_amount: totalAmount,
-          payment_method: paymentMethod,
-          shipping_address: shippingAddress,
-          items: orderItems,
-          items_detail: itemsDetail, // Detaylı fiyat bilgileri
-          status: 'preparing',
-          delivery_note: orderNote.trim() || null,
-        })
-        .select()
-        .single();
+      // Güvenli sipariş oluştur (Backend fiyatları hesaplar)
+      const result = await secureOrderService.createOrder({
+        items: secureOrderItems,
+        payment_method: paymentMethod,
+        shipping_address: shippingAddress,
+        delivery_note: orderNote.trim() || undefined,
+      });
 
-      if (orderError) throw orderError;
+      // Sonucu kontrol et
+      if (!result.success) {
+        setIsPlacingOrder(false);
+        
+        // Hata mesajlarını kullanıcı dostu hale getir
+        let errorMessage = result.message || t('checkout.orderError');
+        let errorTitle = t('common.error');
+        
+        if (result.error === 'MINIMUM_ORDER_NOT_MET') {
+          const details = result.details;
+          errorMessage = `${t('cart.minOrderAmount')}: ₺${details.minimum_required.toFixed(2)}\n\n${t('cart.remaining')}: ₺${details.remaining.toFixed(2)}\n\n${t('cart.tobaccoExcluded')}`;
+        } else if (result.error === 'INSUFFICIENT_STOCK') {
+          errorMessage = t('checkout.insufficientStockItem', {
+            productName: result.message,
+            available: result.details?.available || 0,
+            requested: result.details?.requested || 0,
+          });
+        } else if (result.error === 'QUANTITY_LIMIT_EXCEEDED') {
+          errorMessage = `${result.message}\n\nMaksimum: ${result.details?.max_allowed || 50} adet`;
+        } else if (result.error === 'FIRST_ORDER_LIMIT_EXCEEDED') {
+          errorTitle = t('checkout.firstOrderLimitTitle');
+          const details = result.details;
+          errorMessage = t('checkout.firstOrderLimitMessage', {
+            maxAmount: details.max_amount.toFixed(2),
+            currentAmount: details.current_amount.toFixed(2),
+            exceededBy: details.exceeded_by?.toFixed(2) || '0.00',
+          });
+        }
+        
+        Alert.alert(
+          errorTitle,
+          errorMessage,
+          [{text: t('common.ok')}]
+        );
+        return;
+      }
+
+      // SUCCESS: Log successful order for rate limiting (3 orders in 5 min = ban)
+      await supabase.rpc('log_order_success', {
+        p_user_id: user?.id,
+        p_user_email: user?.email,
+        p_items_count: items.length,
+        p_total_quantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        p_total_amount: result.total_amount || 0,
+        p_ip_address: deviceInfo.ip || '0.0.0.0',
+        p_user_agent: deviceInfo.userAgent,
+        p_device_id: deviceInfo.deviceId
+      });
 
       // Sepeti temizle
       clearCart();
@@ -395,6 +455,19 @@ export const CheckoutScreen: React.FC = () => {
       );
     } catch (error: any) {
       console.error('Sipariş oluşturulamadı:', error);
+      
+      // Log failed order attempt (suspicious if repeated failures)
+      await supabase.rpc('log_order_attempt', {
+        p_user_id: user?.id,
+        p_user_email: user?.email,
+        p_attempt_type: 'order_failed',
+        p_items_count: items.length,
+        p_total_quantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        p_total_amount: 0,
+        p_blocked: true,
+        p_reason: '⚠️ ERROR: Order creation failed - ' + (error.message || 'Unknown error')
+      });
+
       Alert.alert(
         t('checkout.orderError'),
         error.message || t('orders.errorOccurred'),

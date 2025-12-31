@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
@@ -19,17 +20,19 @@ import {useQuery} from '@tanstack/react-query';
 import {ArrowLeft, ShoppingBag, Trash} from 'iconoir-react-native';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '@core/constants';
 import {Button} from '@shared/ui';
-import {useCartStore} from '@store/slices/cartStore';
+import {useCartStore, MAX_QUANTITY_PER_PRODUCT} from '@store/slices/cartStore';
 import {useAppStore} from '@store/slices/appStore';
 import {productsService} from '../services/productsService';
 import {MainStackParamList} from '@core/navigation/types';
 import {OptimizedImage} from '@shared/components/OptimizedImage';
+import {useTranslation} from '@localization';
 
 type ProductDetailScreenRouteProp = RouteProp<MainStackParamList, 'ProductDetail'>;
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 export const ProductDetailScreen: React.FC = () => {
+  const {t} = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<ProductDetailScreenRouteProp>();
   const {productId} = route.params;
@@ -87,6 +90,15 @@ export const ProductDetailScreen: React.FC = () => {
   };
 
   const handleIncrement = () => {
+    // Check if we're at the limit
+    if (quantity >= MAX_QUANTITY_PER_PRODUCT) {
+      Alert.alert(
+        t('cart.maxQuantityTitle'),
+        t('cart.maxQuantityMessage', {max: MAX_QUANTITY_PER_PRODUCT.toString()}),
+        [{text: t('common.ok')}]
+      );
+      return;
+    }
     updateQuantity(productId, quantity + 1);
   };
 
